@@ -124,17 +124,17 @@ class Writer {
 
   heading(text: string) {
     this.gap(10);
-    this.ensure(28);
+    this.ensure(70);
     this.text(text, PAGE.margin, 10.5, { bold: true });
     this.rule(INK);
   }
 
   box(label: string, body: string, minLines = 2) {
-    this.text(label, PAGE.margin, 8.5, { bold: true, color: MUTED });
-    this.gap(2);
     const lines = Math.max(minLines, this.wrap(body || " ", this.font, 10, PAGE.w - 2 * PAGE.margin - 16).length);
     const h = lines * 13.5 + 12;
-    this.ensure(h);
+    this.ensure(h + 24);
+    this.text(label, PAGE.margin, 8.5, { bold: true, color: MUTED });
+    this.gap(2);
     this.page.drawRectangle({ x: PAGE.margin, y: this.y - h, width: PAGE.w - 2 * PAGE.margin, height: h, borderColor: LINE, borderWidth: 0.8 });
     const top = this.y;
     this.y -= 7;
@@ -180,13 +180,16 @@ function renderHeader(w: Writer, review: ReviewForPdf, L: Labels, lang: Language
     [L.position, e.position, L.iec, e.iecStatus ?? ""],
     [L.supervisor, review.supervisor.name, L.reviewDate, fmtDate(review.supervisorSubmittedAt ?? review.approvedAt ?? review.updatedAt)]
   ];
+  const leftValueX = PAGE.margin + Math.max(110, ...rows.map(([l1]) => w.font.widthOfTextAtSize(`${l1}:`, 9.5) + 10));
+  const rightLabelX = 320;
+  const rightValueX = rightLabelX + Math.max(90, ...rows.map(([, , l2]) => w.font.widthOfTextAtSize(`${l2}:`, 9.5) + 10));
   for (const [l1, v1, l2, v2] of rows) {
     w.ensure(16);
     const y = w.y - 10;
     w.page.drawText(`${l1}:`, { x: PAGE.margin, y, size: 9.5, font: w.font, color: MUTED });
-    w.page.drawText(v1, { x: PAGE.margin + 110, y, size: 9.5, font: w.bold, color: INK });
-    w.page.drawText(`${l2}:`, { x: 330, y, size: 9.5, font: w.font, color: MUTED });
-    w.page.drawText(v2, { x: 420, y, size: 9.5, font: w.bold, color: INK });
+    w.page.drawText(v1, { x: leftValueX, y, size: 9.5, font: w.bold, color: INK });
+    w.page.drawText(`${l2}:`, { x: rightLabelX, y, size: 9.5, font: w.font, color: MUTED });
+    w.page.drawText(v2, { x: rightValueX, y, size: 9.5, font: w.bold, color: INK });
     w.y -= 16;
   }
 }
