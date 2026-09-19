@@ -1,10 +1,11 @@
 import Image from "next/image";
-import { roleLabel, type SessionUser } from "@/lib/types";
+import { isAdmin, roleLabel, type SessionUser } from "@/lib/types";
 
 const nav = [
   { href: "/office", label: "Reviews" },
-  { href: "/office/employees/new", label: "Add employee" },
-  { href: "/office/periods", label: "Periods" }
+  { href: "/office/employees", label: "Employees" },
+  { href: "/office/periods", label: "Periods" },
+  { href: "/office/settings", label: "Settings", adminOnly: true }
 ];
 
 export function OfficeShell({ user, active, children }: { user: SessionUser; active: string; children: React.ReactNode }) {
@@ -19,8 +20,8 @@ export function OfficeShell({ user, active, children }: { user: SessionUser; act
           </div>
         </div>
         <nav>
-          {nav.map((item) => (
-            <a key={item.href} href={item.href} className={active === item.href ? "active" : undefined}>{item.label}</a>
+          {nav.filter((item) => !item.adminOnly || isAdmin(user)).map((item) => (
+            <a key={item.href} href={item.href} className={active === item.href || (item.href !== "/office" && active.startsWith(item.href)) ? "active" : undefined}>{item.label}</a>
           ))}
         </nav>
         <div className="user">

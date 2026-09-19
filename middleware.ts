@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { appUrl } from "@/lib/app-url";
 
 const SESSION_COOKIE = "reviewme-session";
 
@@ -10,6 +11,7 @@ function isPublicPath(pathname: string) {
     pathname === "/login" ||
     pathname === "/login/submit" ||
     pathname === "/logout" ||
+    pathname.startsWith("/auth/central") ||
     pathname.startsWith("/api/health")
   );
 }
@@ -23,10 +25,7 @@ export function middleware(request: NextRequest) {
 
   const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
   if (!hasSession && !isPublicPath(pathname)) {
-    const login = request.nextUrl.clone();
-    login.pathname = "/login";
-    login.search = "";
-    return NextResponse.redirect(login);
+    return NextResponse.redirect(appUrl("/login", request));
   }
 
   return NextResponse.next();

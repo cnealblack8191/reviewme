@@ -343,6 +343,15 @@ model PayBlock {
   updatedAt       DateTime  @updatedAt
 }
 
+/// One-time login tokens from central.ecinc.us that have already been used (replay protection).
+model ConsumedLoginToken {
+  jti       String   @id
+  expiresAt DateTime
+  usedAt    DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
 // ---------- Audit and messaging ----------
 
 model AuditEvent {

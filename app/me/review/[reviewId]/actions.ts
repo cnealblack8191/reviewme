@@ -1,72 +1,70 @@
 "use server";
 
-import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { requireReviewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isValidRating, submitSupervisorSide } from "@/lib/reviews";
+import type { SupervisorDraft } from "@/lib/supervisor-draft";
 
 async function loadOwnedReview(reviewId: string, userId: string) {
   const review = await prisma.review.findUnique({
     where: { id: reviewId },
-    include: { template: { include: { criteria: true } } }
+    include: { template: { include: { criteria: { orderBy: { sortOrder: "asc" } } } } }
   });
   if (!review || review.supervisorId !== userId) return null;
   if (review.supervisorStatus === "SUBMITTED") return null;
   return review;
 }
 
-async function persistAnswers(formData: FormData, userId: string) {
-  const reviewId = String(formData.get("reviewId") ?? "");
-  const review = await loadOwnedReview(reviewId, userId);
-  if (!review) return null;
+function clean(value: unknown, max = 4000) {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
 
+async function persist(review: NonNullable<Awaited<ReturnType<typeof loadOwnedReview>>>, draft: SupervisorDraft) {
   for (const criterion of review.template.criteria) {
-    const raw = formData.get(`rating:${criterion.id}`);
-    const rating = raw ? Number(raw) : null;
-    const comment = String(formData.get(`comment:${criterion.id}`) ?? "").trim() || null;
-    if (rating != null && !isValidRating(rating)) continue;
+    const answer = draft.answers?.[criterion.id];
+    const rating = typeof answer?.rating === "number" && isValidRating(answer.rating) ? answer.rating : null;
+    const comment = clean(answer?.comment, 1000) || null;
     await prisma.reviewAnswer.upsert({
-      where: { reviewId_criterionId_side: { reviewId, criterionId: criterion.id, side: "SUPERVISOR" } },
+      where: { reviewId_criterionId_side: { reviewId: review.id, criterionId: criterion.id, side: "SUPERVISOR" } },
       update: { rating, comment },
-      create: { reviewId, criterionId: criterion.id, side: "SUPERVISOR", rating, comment }
+      create: { reviewId: review.id, criterionId: criterion.id, side: "SUPERVISOR", rating, comment }
     });
   }
-
-  const overallRaw = formData.get("overallRating");
-  const overallRating = overallRaw ? Number(overallRaw) : null;
-  await prisma.review.update({
-    where: { id: reviewId },
+  const updated = await prisma.review.update({
+    where: { id: review.id },
     data: {
-      overallRating: overallRating != null && isValidRating(overallRating) ? overallRating : null,
-      overallComments: String(formData.get("overallComments") ?? "").trim() || null,
-      goals: String(formData.get("goals") ?? "").trim() || null,
+      overallRating: typeof draft.overallRating === "number" && isValidRating(draft.overallRating) ? draft.overallRating : null,
+      overallComments: clean(draft.overallComments) || null,
+      goals: clean(draft.goals) || null,
       supervisorStatus: "IN_PROGRESS"
-    }
+    },
+    select: { updatedAt: true }
   });
-
-  return review;
+  return updated.updatedAt;
 }
 
-export async function saveSupervisorAnswersAction(formData: FormData) {
+export async function saveSupervisorDraft(reviewId: string, draft: SupervisorDraft): Promise<{ ok: true; savedAt: number } | { ok: false }> {
   const user = await requireReviewer();
-  const review = await persistAnswers(formData, user.id);
-  if (review) revalidatePath(`/me/review/${review.id}`);
+  const review = await loadOwnedReview(reviewId, user.id);
+  if (!review) return { ok: false };
+  const savedAt = await persist(review, draft);
+  return { ok: true, savedAt: savedAt.getTime() };
 }
 
-export async function submitSupervisorAction(formData: FormData) {
+export async function submitSupervisorDraft(reviewId: string, draft: SupervisorDraft): Promise<{ ok: true } | { ok: false; missing: string[] }> {
   const user = await requireReviewer();
-  const review = await persistAnswers(formData, user.id);
-  if (!review) return;
+  const review = await loadOwnedReview(reviewId, user.id);
+  if (!review) return { ok: false, missing: ["This review is no longer open on your side"] };
+  await persist(review, draft);
 
-  const answers = await prisma.reviewAnswer.count({ where: { reviewId: review.id, side: "SUPERVISOR", rating: { not: null } } });
-  const fresh = await prisma.review.findUniqueOrThrow({ where: { id: review.id }, select: { overallRating: true } });
-  if (answers < review.template.criteria.length || fresh.overallRating == null) {
-    // Incomplete: leave it in progress. The page shows what is missing on reload.
-    revalidatePath(`/me/review/${review.id}`);
-    return;
+  const missing: string[] = [];
+  for (const c of review.template.criteria) {
+    const r = draft.answers?.[c.id]?.rating;
+    if (typeof r !== "number" || !isValidRating(r)) missing.push(c.labelEn);
   }
+  if (typeof draft.overallRating !== "number" || !isValidRating(draft.overallRating)) missing.push("Overall rating");
+  if (missing.length) return { ok: false, missing };
 
   await submitSupervisorSide(review.id, user.id);
-  redirect("/me");
+  return { ok: true };
 }

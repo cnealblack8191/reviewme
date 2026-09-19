@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { appUrl } from "@/lib/app-url";
 import { authenticate, buildSessionCookieValue, getSessionCookieName, getSessionCookieOptions, homeFor } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
@@ -7,14 +8,14 @@ export async function POST(request: NextRequest) {
   const email = String(form.get("email") ?? "");
   const password = String(form.get("password") ?? "");
 
-  const to = (path: string) => NextResponse.redirect(new URL(path, request.url), 303);
+  const to = (path: string) => NextResponse.redirect(appUrl(path, request), 303);
 
   if (!email || !password) return to("/login?error=missing-credentials");
 
-  const user = await authenticate(email, password);
-  if (!user) return to("/login?error=invalid-credentials");
+  const result = await authenticate(email, password);
+  if (!result.ok) return to(`/login?error=${result.reason}`);
 
-  const response = to(homeFor(user));
-  response.cookies.set(getSessionCookieName(), buildSessionCookieValue(user.id), getSessionCookieOptions());
+  const response = to(homeFor(result.user));
+  response.cookies.set(getSessionCookieName(), buildSessionCookieValue(result.user.id), getSessionCookieOptions());
   return response;
 }

@@ -36,7 +36,9 @@ npm run reminders:run     # daily, from cron, needs CRON_SECRET and APP_BASE_URL
 | `prisma/schema.prisma` | Data model |
 | `prisma/templates.json` | The eight ECI review forms, English and Spanish |
 | `prisma/seed.mjs` | Settings, templates, first users |
-| `lib/auth.ts` | Session cookie, role guards |
+| `lib/auth.ts` | Session cookie, role guards, password and central sign-in |
+| `lib/central-login.ts` | Verifies the ECI Central handoff token |
+| `components/supervisor-review-form.tsx` | Offline-capable reviewer form, saves on the phone and syncs |
 | `lib/links.ts` | One-time worker links: create, resolve, identity check, lock |
 | `lib/reviews.ts` | Review status transitions |
 | `lib/messaging/` | Twilio SMS and Microsoft 365 (Graph) email adapters |
@@ -48,4 +50,5 @@ npm run reminders:run     # daily, from cron, needs CRON_SECRET and APP_BASE_URL
 | `app/r/[token]` | Worker link: verify, self-evaluation, sign, done |
 | `docs/DECISIONS.md` | Every product decision made so far |
 | `docs/MS365_EMAIL.md` | Microsoft 365 mail setup |
+| `docs/CENTRAL_LOGIN.md` | What central.ecinc.us must send to sign office staff in |
 | `docs/TWILIO_10DLC.md` | Twilio registration text and message templates |

@@ -10,7 +10,8 @@ import { redirect } from "next/navigation";
 import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
-import { isOffice, isReviewer, type SessionUser } from "@/lib/types";
+import { isAdmin, isOffice, isReviewer, type SessionUser } from "@/lib/types";
+import { centralLoginConfig } from "@/lib/central-login";
 
 const SESSION_COOKIE = "reviewme-session";
 const SESSION_MAX_AGE = 60 * 60 * 10;
@@ -70,12 +71,31 @@ export function buildSessionCookieValue(userId: string) {
   return serialize({ userId, issuedAt: Date.now() });
 }
 
-/** Email + password against the local user table. Swap point for central.ecinc.us. */
-export async function authenticate(email: string, password: string): Promise<SessionUser | null> {
+export type AuthenticateResult = { ok: true; user: SessionUser } | { ok: false; reason: "invalid-credentials" | "use-central" };
+
+/**
+ * Email + password against the local user table. When CENTRAL_LOGIN_REQUIRED
+ * is on, office-only accounts must come through central.ecinc.us instead;
+ * reviewers (foremen, managers) keep the password login for their phones.
+ */
+export async function authenticate(email: string, password: string): Promise<AuthenticateResult> {
   const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
-  if (!user || !user.isActive) return null;
-  if (!verifyPassword(password, user.passwordHash)) return null;
-  return toSessionUser(user);
+  if (!user || !user.isActive) return { ok: false, reason: "invalid-credentials" };
+  const session = toSessionUser(user);
+  if (centralLoginConfig()?.required && isOffice(session) && !isReviewer(session)) {
+    return { ok: false, reason: "use-central" };
+  }
+  if (!verifyPassword(password, user.passwordHash)) return { ok: false, reason: "invalid-credentials" };
+  return { ok: true, user: session };
+}
+
+/** Session for a user already authenticated by central.ecinc.us. Office roles only. */
+export async function authenticateFromCentral(email: string): Promise<AuthenticateResult> {
+  const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+  if (!user || !user.isActive) return { ok: false, reason: "invalid-credentials" };
+  const session = toSessionUser(user);
+  if (!isOffice(session)) return { ok: false, reason: "invalid-credentials" };
+  return { ok: true, user: session };
 }
 
 function toSessionUser(user: { id: string; email: string; name: string; roles: Role[]; isActive: boolean }): SessionUser {
@@ -109,6 +129,12 @@ export async function requireUser() {
 export async function requireOffice() {
   const user = await requireUser();
   if (!isOffice(user)) redirect("/me");
+  return user;
+}
+
+export async function requireAdmin() {
+  const user = await requireUser();
+  if (!isAdmin(user)) redirect("/office");
   return user;
 }
 
