@@ -1,0 +1,153 @@
+import { notFound } from "next/navigation";
+import { requireOffice } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { describeStatus } from "@/lib/reviews";
+import { OfficeShell } from "@/components/office-shell";
+import { addOfficeNoteAction, approveAction, sendBackAction, sendSelfLinkAction, savePayBlockAction } from "@/app/office/reviews/[reviewId]/actions";
+
+export default async function OfficeReviewPage({ params }: { params: Promise<{ reviewId: string }> }) {
+  const user = await requireOffice();
+  const { reviewId } = await params;
+
+  const review = await prisma.review.findUnique({
+    where: { id: reviewId },
+    include: {
+      employee: true,
+      supervisor: { select: { name: true } },
+      period: true,
+      template: { include: { criteria: { orderBy: { sortOrder: "asc" } }, questions: { orderBy: { sortOrder: "asc" } } } },
+      answers: true,
+      questionAnswers: true,
+      notes: { include: { author: { select: { name: true } } }, orderBy: { createdAt: "desc" } },
+      payBlock: true,
+      links: { orderBy: { createdAt: "desc" } },
+      events: { include: { actor: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 30 }
+    }
+  });
+  if (!review) notFound();
+
+  const answer = (criterionId: string, side: "EMPLOYEE" | "SUPERVISOR") => review.answers.find((a) => a.criterionId === criterionId && a.side === side);
+  const pay = review.payBlock;
+
+  return (
+    <OfficeShell user={user} active="/office">
+      <div className="page-head">
+        <div>
+          <div className="eyebrow"><a href="/office">Reviews</a> · {review.period.name} · {review.template.titleEn} form</div>
+          <h1>{review.employee.firstName} {review.employee.lastName}</h1>
+          <div style={{ color: "var(--muted)", fontSize: 14 }}>{review.employee.position} · Reviewer {review.supervisor.name} · <span className="chip chip-muted">{describeStatus(review)}</span></div>
+        </div>
+        <div className="actions">
+          {review.employeeStatus !== "SUBMITTED" ? (
+            <form action={sendSelfLinkAction}><input type="hidden" name="reviewId" value={review.id} /><button className="btn btn-outline" type="submit">Send self-evaluation link</button></form>
+          ) : null}
+          {review.status === "PENDING_OFFICE" ? (
+            <form action={approveAction}><input type="hidden" name="reviewId" value={review.id} /><button className="btn btn-primary" type="submit">Approve</button></form>
+          ) : null}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 360px", gap: 20, alignItems: "start" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <section className="table-card">
+            <table>
+              <thead><tr><th>Section I · Self evaluation</th><th>Employee answer</th></tr></thead>
+              <tbody>
+                {review.template.questions.map((q) => (
+                  <tr key={q.id}><td style={{ width: "45%" }}>{q.textEn}</td><td>{review.questionAnswers.find((a) => a.questionId === q.id)?.answer ?? <span style={{ color: "var(--muted)" }}>—</span>}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+          <section className="table-card">
+            <table>
+              <thead><tr><th>Section II · Quality</th><th style={{ textAlign: "center" }}>Self</th><th style={{ textAlign: "center" }}>Sup.</th><th>Supervisor comments</th></tr></thead>
+              <tbody>
+                {review.template.criteria.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.labelEn}</td>
+                    <td style={{ textAlign: "center", fontWeight: 600 }}>{answer(c.id, "EMPLOYEE")?.rating ?? "—"}</td>
+                    <td style={{ textAlign: "center", fontWeight: 600 }}>{answer(c.id, "SUPERVISOR")?.rating ?? "—"}</td>
+                    <td style={{ color: "#4b5563" }}>{answer(c.id, "SUPERVISOR")?.comment ?? ""}</td>
+                  </tr>
+                ))}
+                <tr><td style={{ fontWeight: 600 }}>Overall rating</td><td></td><td style={{ textAlign: "center", fontWeight: 700 }}>{review.overallRating ?? "—"}</td><td style={{ color: "#4b5563" }}>{review.overallComments ?? ""}</td></tr>
+                <tr><td style={{ fontWeight: 600 }}>Goals for next review</td><td colSpan={3} style={{ color: "#4b5563" }}>{review.goals ?? ""}</td></tr>
+                <tr><td style={{ fontWeight: 600 }}>Employee comments</td><td colSpan={3} style={{ color: "#4b5563" }}>{review.employeeComments ?? ""}</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          {review.status === "PENDING_OFFICE" ? (
+            <form action={sendBackAction} className="card" style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+              <input type="hidden" name="reviewId" value={review.id} />
+              <label className="field" style={{ flex: 1 }}><span>Send back to {review.supervisor.name} with a reason</span><input name="reason" required placeholder="What needs to change" /></label>
+              <button className="btn btn-outline" type="submit">Send back</button>
+            </form>
+          ) : null}
+
+          <section className="table-card">
+            <table>
+              <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
+              <tbody>
+                {review.events.map((e) => (
+                  <tr key={e.id}>
+                    <td style={{ whiteSpace: "nowrap", color: "var(--muted)", fontSize: 13 }}>{e.createdAt.toLocaleString()}</td>
+                    <td>{e.actor?.name ?? e.actorLabel}</td>
+                    <td>{e.action}{e.field ? ` · ${e.field}` : ""}{e.oldValue || e.newValue ? ` · ${e.oldValue ?? ""} → ${e.newValue ?? ""}` : ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        </div>
+
+        <aside style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <section className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="group-title" style={{ padding: 0 }}><span>Links</span></div>
+            {review.links.length === 0 ? <small style={{ color: "var(--muted)" }}>No links sent yet.</small> : null}
+            {review.links.map((l) => (
+              <div key={l.id} style={{ fontSize: 13, display: "flex", justifyContent: "space-between", gap: 8 }}>
+                <span>{l.kind === "SELF_EVAL" ? "Self-eval" : "Sign"} · {l.channel}</span>
+                <span style={{ color: l.usedAt ? "var(--ok)" : l.voidedAt || l.lockedAt || l.expiresAt < new Date() ? "var(--danger)" : "var(--muted)" }}>
+                  {l.usedAt ? "used" : l.lockedAt ? "locked" : l.voidedAt ? "voided" : l.expiresAt < new Date() ? "expired" : l.verifiedAt ? "verified" : l.openedAt ? "opened" : "sent"}
+                </span>
+              </div>
+            ))}
+          </section>
+
+          <form action={savePayBlockAction} className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <input type="hidden" name="reviewId" value={review.id} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span className="group-title" style={{ padding: 0 }}>Current status &amp; recommendations</span>
+              <span className="chip chip-warn">Office only</span>
+            </div>
+            <label className="field"><span>Current pay rate</span><input name="currentPayRate" type="number" step="0.01" defaultValue={pay?.currentPayRate?.toString() ?? ""} /></label>
+            <label className="field"><span>Last raise date</span><input name="lastRaiseDate" type="date" defaultValue={pay?.lastRaiseDate?.toISOString().slice(0, 10) ?? ""} /></label>
+            <label className="field"><span>Last raise amount</span><input name="lastRaiseAmount" type="number" step="0.01" defaultValue={pay?.lastRaiseAmount?.toString() ?? ""} /></label>
+            <label className="field"><span>Raise amount</span><input name="raiseAmount" type="number" step="0.01" defaultValue={pay?.raiseAmount?.toString() ?? ""} /></label>
+            <label className="field"><span>New pay rate</span><input name="newPayRate" type="number" step="0.01" defaultValue={pay?.newPayRate?.toString() ?? ""} /></label>
+            <label className="field"><span>Date effective</span><input name="dateEffective" type="date" defaultValue={pay?.dateEffective?.toISOString().slice(0, 10) ?? ""} /></label>
+            <label className="field"><span>Next review date</span><input name="nextReviewDate" type="date" defaultValue={pay?.nextReviewDate?.toISOString().slice(0, 10) ?? ""} /></label>
+            <button className="btn btn-outline" type="submit">Save pay block</button>
+          </form>
+
+          <section className="office-only" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="label">OFFICE ONLY · hidden from reviewer and worker</div>
+            {review.notes.map((n) => (
+              <div key={n.id} style={{ fontSize: 13, lineHeight: 1.45 }}>
+                <div>{n.body}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>{n.author.name} · {n.createdAt.toLocaleDateString()}</div>
+              </div>
+            ))}
+            <form action={addOfficeNoteAction} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <input type="hidden" name="reviewId" value={review.id} />
+              <textarea name="body" required rows={2} placeholder="Add a note…" style={{ width: "100%", border: "1px solid var(--line)", borderRadius: 9, padding: "9px 10px", fontSize: 13 }} />
+              <button className="btn btn-dark" style={{ alignSelf: "flex-end", height: 32 }} type="submit">Save note</button>
+            </form>
+          </section>
+        </aside>
+      </div>
+    </OfficeShell>
+  );
+}

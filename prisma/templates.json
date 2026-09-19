@@ -1,0 +1,247 @@
+{
+  "source": "MASTER Performance Review REVISED 2024, eight position templates. Personal data from the sample PDFs intentionally omitted.",
+  "scale": {
+    "min": 1, "max": 4,
+    "labels": {
+      "1": { "en": "Unsatisfactory", "es": "Insatisfactorio" },
+      "2": { "en": "Fair", "es": "Regular" },
+      "3": { "en": "Good", "es": "Bueno" },
+      "4": { "en": "Excellent", "es": "Excelente" }
+    }
+  },
+  "headerFields": [
+    { "key": "employeeName", "en": "Employee Name", "es": "Nombre del empleado" },
+    { "key": "hireDate", "en": "Hire Date", "es": "Fecha de contratación" },
+    { "key": "currentPosition", "en": "Current Position", "es": "Puesto actual" },
+    { "key": "iecStatus", "en": "IEC Year/Status", "es": "Año/estatus IEC" },
+    { "key": "supervisorName", "en": "Supervisor Name", "es": "Nombre del supervisor" },
+    { "key": "reviewDate", "en": "Review Date", "es": "Fecha de la evaluación" }
+  ],
+  "sections": {
+    "selfEval": { "en": "Section I: Employee Self Evaluation Questions", "es": "Sección I: Preguntas de autoevaluación del empleado" },
+    "evaluation": { "en": "Section II: Evaluation", "es": "Sección II: Evaluación" },
+    "columns": {
+      "quality": { "en": "Quality", "es": "Criterio" },
+      "selfEval": { "en": "Self Eval", "es": "Autoevaluación" },
+      "supEval": { "en": "Sup. Eval", "es": "Evaluación del supervisor" },
+      "supComments": { "en": "Supervisor Comments", "es": "Comentarios del supervisor" }
+    },
+    "overall": { "en": "Supervisor Overall Evaluation Rating and Comments", "es": "Calificación general y comentarios del supervisor" },
+    "goals": { "en": "Supervisor Recommended Goals for Next Review", "es": "Metas recomendadas por el supervisor para la próxima evaluación" },
+    "employeeComments": { "en": "Employee Comments After Discussion with Supervisor", "es": "Comentarios del empleado después de la conversación con el supervisor" },
+    "currentStatus": {
+      "title": { "en": "Current Status", "es": "Situación actual" },
+      "fields": [
+        { "key": "hireDate", "en": "Hire Date", "es": "Fecha de contratación" },
+        { "key": "currentPayRate", "en": "Current Pay Rate", "es": "Salario actual" },
+        { "key": "lastReviewDate", "en": "Last Review Date", "es": "Fecha de la última evaluación" },
+        { "key": "lastRaiseDate", "en": "Last Raise Date", "es": "Fecha del último aumento" },
+        { "key": "lastRaiseAmount", "en": "Last Raise Amount", "es": "Monto del último aumento" }
+      ]
+    },
+    "recommendations": {
+      "title": { "en": "Recommendations", "es": "Recomendaciones" },
+      "fields": [
+        { "key": "raiseAmount", "en": "Raise Amount", "es": "Monto del aumento" },
+        { "key": "newPayRate", "en": "New Pay Rate", "es": "Nuevo salario" },
+        { "key": "dateEffective", "en": "Date Effective", "es": "Fecha de vigencia" },
+        { "key": "nextReviewDate", "en": "Next Rev. Date", "es": "Fecha de la próxima evaluación" }
+      ]
+    },
+    "verification": {
+      "title": { "en": "Verification of Review", "es": "Verificación de la evaluación" },
+      "supervisorSignature": { "en": "Supervisor Signature", "es": "Firma del supervisor" },
+      "employeeSignature": { "en": "Employee Signature", "es": "Firma del empleado" },
+      "date": { "en": "Date", "es": "Fecha" }
+    },
+    "paperInstructions": {
+      "en": [
+        "Have employee complete self evaluation on page 1.",
+        "Supervisor completes evaluation and makes notes on page 1 and page 2.",
+        "Supervisor and employee meet to discuss review.",
+        "Employee may make comments if desired on page 2 at end of meeting.",
+        "Both supervisor and employee sign, date, and return it to the office."
+      ]
+    }
+  },
+  "selfQuestions": {
+    "q1_tasks": { "en": "Which task(s) do you feel are your strongest skills?", "es": "¿En qué tareas considera que tiene sus mayores habilidades?" },
+    "q1_skills": { "en": "What do you feel are your strongest skills?", "es": "¿Cuáles considera que son sus mayores habilidades?" },
+    "q2": { "en": "What accomplishments from the past year are you most proud of?", "es": "¿De qué logros del último año se siente más orgulloso(a)?" },
+    "q3_eci": { "en": "How can ECI help you grow professionally?", "es": "¿Cómo puede ECI ayudarle a crecer profesionalmente?" },
+    "q3_pm_foreman": { "en": "How can ECI Project Managers help you grow professionally as a foreman?", "es": "¿Cómo pueden los gerentes de proyecto de ECI ayudarle a crecer profesionalmente como capataz?" },
+    "q3_mgmt_team": { "en": "How can ECI management team help you grow professionally as a team member?", "es": "¿Cómo puede el equipo directivo de ECI ayudarle a crecer profesionalmente como miembro del equipo?" },
+    "q3_mgmt": { "en": "How can ECI Management help you grow professionally?", "es": "¿Cómo puede la gerencia de ECI ayudarle a crecer profesionalmente?" },
+    "q3_managers_position": { "en": "How can ECI Managers help you grow professionally in your present position?", "es": "¿Cómo pueden los gerentes de ECI ayudarle a crecer profesionalmente en su puesto actual?" },
+    "q3_eci_position": { "en": "How can ECI help you grow professionally in your present position?", "es": "¿Cómo puede ECI ayudarle a crecer profesionalmente en su puesto actual?" }
+  },
+  "templates": [
+    {
+      "key": "leadman", "title": { "en": "Leadman", "es": "Líder de cuadrilla (Leadman)" },
+      "selfQuestions": ["q1_tasks", "q2", "q3_eci"],
+      "criteria": [
+        { "en": "Accurately documents timesheets daily", "es": "Registra las hojas de tiempo con precisión todos los días" },
+        { "en": "Maintains planning sheets", "es": "Mantiene las hojas de planificación" },
+        { "en": "Meets deadlines", "es": "Cumple con los plazos" },
+        { "en": "Monitors and enforces safety program", "es": "Supervisa y hace cumplir el programa de seguridad" },
+        { "en": "Demonstrates proficient trade knowledge", "es": "Demuestra dominio del oficio" },
+        { "en": "Coordinates well with other trades", "es": "Se coordina bien con otros oficios" },
+        { "en": "Coordinates well with Project Manager", "es": "Se coordina bien con el gerente de proyecto" },
+        { "en": "Maximizes crew productivity", "es": "Maximiza la productividad de la cuadrilla" },
+        { "en": "Integrity & Honesty", "es": "Integridad y honestidad" },
+        { "en": "Coworker Relations", "es": "Relación con los compañeros" },
+        { "en": "Client is happy with you (Owner/GC/A & E)", "es": "El cliente está satisfecho con usted (propietario, contratista general, arquitecto e ingeniero)" },
+        { "en": "Attendance", "es": "Asistencia" },
+        { "en": "Trains crew and develops leaders", "es": "Capacita a la cuadrilla y forma líderes" },
+        { "en": "Keeps everything organized", "es": "Mantiene todo organizado" },
+        { "en": "Doesn't have excessive Emg matl orders", "es": "No hace pedidos de material de emergencia en exceso" }
+      ]
+    },
+    {
+      "key": "lv_supervisor_lead_bs", "title": { "en": "LV Supervisor/Lead (BS Department)", "es": "Supervisor/líder de baja tensión (Departamento BS)" },
+      "selfQuestions": ["q1_tasks", "q2", "q3_pm_foreman"],
+      "criteria": [
+        { "en": "Works to Full Potential", "es": "Trabaja a su máximo potencial" },
+        { "en": "Maintains planning sheets", "es": "Mantiene las hojas de planificación" },
+        { "en": "Meets deadlines", "es": "Cumple con los plazos" },
+        { "en": "Completes required documentation", "es": "Completa la documentación requerida" },
+        { "en": "Supports and monitors safety program", "es": "Apoya y supervisa el programa de seguridad" },
+        { "en": "Demonstrates proficient trade knowledge", "es": "Demuestra dominio del oficio" },
+        { "en": "Coordinates with other trades", "es": "Se coordina con otros oficios" },
+        { "en": "Coordinates with Project Manager", "es": "Se coordina con el gerente de proyecto" },
+        { "en": "Maximizes crew productivity", "es": "Maximiza la productividad de la cuadrilla" },
+        { "en": "Integrity & Honesty", "es": "Integridad y honestidad" },
+        { "en": "Coworker Relations", "es": "Relación con los compañeros" },
+        { "en": "Client Relations (Owner/GC/A & E)", "es": "Relación con el cliente (propietario, contratista general, arquitecto e ingeniero)" },
+        { "en": "Attendance", "es": "Asistencia" },
+        { "en": "Trains his crew", "es": "Capacita a su cuadrilla" }
+      ]
+    },
+    {
+      "key": "field_team", "title": { "en": "Field Team", "es": "Equipo de campo" },
+      "selfQuestions": ["q1_tasks", "q2", "q3_mgmt_team"],
+      "criteria": [
+        { "en": "Works to Full Potential", "es": "Trabaja a su máximo potencial" },
+        { "en": "Quality of Work", "es": "Calidad del trabajo" },
+        { "en": "Communication", "es": "Comunicación" },
+        { "en": "Takes Initiative", "es": "Toma la iniciativa" },
+        { "en": "Wears stocked tool belt", "es": "Usa el cinturón de herramientas completo" },
+        { "en": "Productivity", "es": "Productividad" },
+        { "en": "PPE/Safety", "es": "EPP y seguridad" },
+        { "en": "Honesty/Integrity", "es": "Honestidad e integridad" },
+        { "en": "Coworker Relations", "es": "Relación con los compañeros" },
+        { "en": "Technical Skills", "es": "Habilidades técnicas" },
+        { "en": "Attendance", "es": "Asistencia" },
+        { "en": "Helps train others", "es": "Ayuda a capacitar a otros" }
+      ]
+    },
+    {
+      "key": "foreman", "title": { "en": "Foreman", "es": "Capataz (Foreman)" },
+      "selfQuestions": ["q1_tasks", "q2", "q3_pm_foreman"],
+      "criteria": [
+        { "en": "Accurately documents timesheets daily", "es": "Registra las hojas de tiempo con precisión todos los días" },
+        { "en": "Maintains planning sheets", "es": "Mantiene las hojas de planificación" },
+        { "en": "Meets deadlines", "es": "Cumple con los plazos" },
+        { "en": "Completes all required documentation", "es": "Completa toda la documentación requerida" },
+        { "en": "Monitors and enforces safety program", "es": "Supervisa y hace cumplir el programa de seguridad" },
+        { "en": "Demonstrates proficient trade knowledge", "es": "Demuestra dominio del oficio" },
+        { "en": "Coordinates well with other trades", "es": "Se coordina bien con otros oficios" },
+        { "en": "Coordinates well with Project Manager", "es": "Se coordina bien con el gerente de proyecto" },
+        { "en": "Maximizes crew productivity", "es": "Maximiza la productividad de la cuadrilla" },
+        { "en": "Integrity & Honesty", "es": "Integridad y honestidad" },
+        { "en": "Coworker Relations", "es": "Relación con los compañeros" },
+        { "en": "Client is happy with you (Owner/GC/A & E)", "es": "El cliente está satisfecho con usted (propietario, contratista general, arquitecto e ingeniero)" },
+        { "en": "Attendance", "es": "Asistencia" },
+        { "en": "Trains crew and develops leaders", "es": "Capacita a la cuadrilla y forma líderes" },
+        { "en": "Keeps everything organized", "es": "Mantiene todo organizado" },
+        { "en": "Doesn't have excessive Emg matl orders", "es": "No hace pedidos de material de emergencia en exceso" },
+        { "en": "Intelligently involved in job meetings", "es": "Participa con criterio en las reuniones de obra" }
+      ]
+    },
+    {
+      "key": "project_manager", "title": { "en": "Project Manager", "es": "Gerente de proyecto" },
+      "selfQuestions": ["q1_tasks", "q2", "q3_mgmt"],
+      "criteria": [
+        { "en": "Maximizes your time for the company", "es": "Aprovecha al máximo su tiempo para la empresa" },
+        { "en": "Attendance", "es": "Asistencia" },
+        { "en": "Keeps OneNote updated (Look at OneNote)", "es": "Mantiene OneNote actualizado (revisar OneNote)" },
+        { "en": "Ensures planning sheet is followed", "es": "Se asegura de que se siga la hoja de planificación" },
+        { "en": "Ensures field crew is efficient/productive", "es": "Se asegura de que la cuadrilla de campo sea eficiente y productiva" },
+        { "en": "Verifies quality installation via punchlists", "es": "Verifica la calidad de la instalación mediante listas de pendientes" },
+        { "en": "Supports and monitors safety program", "es": "Apoya y supervisa el programa de seguridad" },
+        { "en": "Evaluates, trains, & supports foremen", "es": "Evalúa, capacita y apoya a los capataces" },
+        { "en": "Ensures proper material ordering by foreman", "es": "Se asegura de que los capataces pidan el material correctamente" },
+        { "en": "Handles matters in a professional way", "es": "Maneja los asuntos de manera profesional" },
+        { "en": "Is client happy with you? (Owner/GC/A & E)", "es": "¿El cliente está satisfecho con usted? (propietario, contratista general, arquitecto e ingeniero)" },
+        { "en": "Coworker relations", "es": "Relación con los compañeros" },
+        { "en": "Has good verbal communication skills", "es": "Tiene buenas habilidades de comunicación verbal" },
+        { "en": "Has good written communication skills", "es": "Tiene buenas habilidades de comunicación escrita" },
+        { "en": "Demonstrates proficient trade knowledge", "es": "Demuestra dominio del oficio" },
+        { "en": "Meets deadlines", "es": "Cumple con los plazos" }
+      ]
+    },
+    {
+      "key": "clerical", "title": { "en": "Clerical", "es": "Administrativo" },
+      "selfQuestions": ["q1_tasks", "q2", "q3_managers_position"],
+      "criteria": [
+        { "en": "Stays organized", "es": "Se mantiene organizado(a)" },
+        { "en": "Plans work and prioritizes tasks well", "es": "Planifica el trabajo y prioriza bien las tareas" },
+        { "en": "Quality of work - accurate & efficient", "es": "Calidad del trabajo: preciso y eficiente" },
+        { "en": "Takes initiative", "es": "Toma la iniciativa" },
+        { "en": "Has good verbal communication skills", "es": "Tiene buenas habilidades de comunicación verbal" },
+        { "en": "Has good written communications skills", "es": "Tiene buenas habilidades de comunicación escrita" },
+        { "en": "Handles matters in a professional way", "es": "Maneja los asuntos de manera profesional" },
+        { "en": "Works well with others", "es": "Trabaja bien con los demás" },
+        { "en": "Job knowledge", "es": "Conocimiento del puesto" },
+        { "en": "Looks for ways to become more efficient", "es": "Busca maneras de ser más eficiente" },
+        { "en": "Is fluent in computer skills/basic software", "es": "Domina la computadora y el software básico" },
+        { "en": "Meets deadlines as needed", "es": "Cumple con los plazos según se requiera" },
+        { "en": "Willing to learn new tasks as needed", "es": "Dispuesto(a) a aprender nuevas tareas según se requiera" },
+        { "en": "Represents ECI in professional manner", "es": "Representa a ECI de manera profesional" },
+        { "en": "Appearance", "es": "Presentación personal" },
+        { "en": "Attendance", "es": "Asistencia" }
+      ]
+    },
+    {
+      "key": "department_manager", "title": { "en": "Department Manager", "es": "Gerente de departamento" },
+      "selfQuestions": ["q1_skills", "q2", "q3_eci_position"],
+      "criteria": [
+        { "en": "Trains Team Members to excel at their job", "es": "Capacita a los miembros del equipo para sobresalir en su trabajo" },
+        { "en": "Empowers Team to do their job", "es": "Empodera al equipo para hacer su trabajo" },
+        { "en": "Team wants to work for this Manager", "es": "El equipo quiere trabajar para este gerente" },
+        { "en": "Plans proactively, not just reactive", "es": "Planifica de forma proactiva, no solo reactiva" },
+        { "en": "Has good grasp of the big picture for Dept.", "es": "Tiene una buena visión general del departamento" },
+        { "en": "Stays involved enough to QC the team", "es": "Se mantiene lo suficientemente involucrado para controlar la calidad del equipo" },
+        { "en": "Clients of this Dept. are consistently happy", "es": "Los clientes de este departamento están consistentemente satisfechos" },
+        { "en": "Attendance", "es": "Asistencia" },
+        { "en": "Looks for ways to become more efficient", "es": "Busca maneras de ser más eficiente" },
+        { "en": "Meets deadlines as needed", "es": "Cumple con los plazos según se requiera" },
+        { "en": "Applies good communications skills", "es": "Aplica buenas habilidades de comunicación" },
+        { "en": "Represents ECI in a professional manner", "es": "Representa a ECI de manera profesional" },
+        { "en": "Stays organized", "es": "Se mantiene organizado(a)" }
+      ]
+    },
+    {
+      "key": "estimating", "title": { "en": "Estimating", "es": "Estimación" },
+      "selfQuestions": ["q1_tasks", "q2", "q3_managers_position"],
+      "criteria": [
+        { "en": "Works to Full Potential", "es": "Trabaja a su máximo potencial" },
+        { "en": "Plans work and prioritizes tasks well", "es": "Planifica el trabajo y prioriza bien las tareas" },
+        { "en": "Quality of work - accurate & efficient", "es": "Calidad del trabajo: preciso y eficiente" },
+        { "en": "Productivity level", "es": "Nivel de productividad" },
+        { "en": "Takes initiative", "es": "Toma la iniciativa" },
+        { "en": "Has good verbal communication skills", "es": "Tiene buenas habilidades de comunicación verbal" },
+        { "en": "Has good written communications skills", "es": "Tiene buenas habilidades de comunicación escrita" },
+        { "en": "Works well with others", "es": "Trabaja bien con los demás" },
+        { "en": "Job knowledge", "es": "Conocimiento del puesto" },
+        { "en": "Looks for ways to become more efficient", "es": "Busca maneras de ser más eficiente" },
+        { "en": "Is fluent in computer skills/basic software", "es": "Domina la computadora y el software básico" },
+        { "en": "Meets deadlines as needed", "es": "Cumple con los plazos según se requiera" },
+        { "en": "Willing to learn new tasks as needed", "es": "Dispuesto(a) a aprender nuevas tareas según se requiera" },
+        { "en": "Represents ECI in professional manner", "es": "Representa a ECI de manera profesional" },
+        { "en": "Appearance", "es": "Presentación personal" },
+        { "en": "Attendance", "es": "Asistencia" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,366 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- People and access ----------
+
+enum Role {
+  FOREMAN
+  OFFICE
+  ADMIN
+}
+
+enum Language {
+  EN
+  ES
+}
+
+enum IdentityCheck {
+  PHONE_LAST4
+  SSN_LAST4
+}
+
+/// One row, id "eci". Company-wide switches. A tenant column comes later.
+model CompanySettings {
+  id                     String        @id @default("eci")
+  name                   String        @default("Electrical Contractor Inc.")
+  shortName              String        @default("ECI")
+  identityCheck          IdentityCheck @default(PHONE_LAST4)
+  linkTtlDays            Int           @default(7)
+  linkMaxAttempts        Int           @default(3)
+  remindersEnabled       Boolean       @default(true)
+  reminderEmployeeDays   Int           @default(3)
+  reminderSupervisorDays Int           @default(7)
+  smsEnabled             Boolean       @default(false)
+  emailEnabled           Boolean       @default(true)
+  updatedAt              DateTime      @updatedAt
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  roles        Role[]
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  employee            Employee?
+  reviewsAsSupervisor Review[]     @relation("ReviewSupervisor")
+  approvedReviews     Review[]     @relation("ReviewApprover")
+  employeesReviewed   Employee[]   @relation("EmployeeReviewer")
+  officeNotes         OfficeNote[]
+  auditEvents         AuditEvent[]
+  payBlockUpdates     PayBlock[]
+  linksCreated        ReviewLink[]
+}
+
+/// Anyone who receives a review. A foreman is an Employee too, reviewed by a manager.
+model Employee {
+  id          String    @id @default(cuid())
+  firstName   String
+  lastName    String
+  phone       String?
+  phoneLast4  String?
+  /// scrypt hash of the last 4 of the SSN, only when identityCheck = SSN_LAST4. Never stored in clear.
+  ssnLast4Hash String?
+  email       String?
+  position    String
+  iecStatus   String?
+  hireDate    DateTime?
+  jobSite     String?
+  language    Language  @default(EN)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  templateId String
+  template   ReviewTemplate @relation(fields: [templateId], references: [id])
+  reviewerId String
+  reviewer   User           @relation("EmployeeReviewer", fields: [reviewerId], references: [id])
+  /// Set when the employee also signs in, for example a foreman.
+  userId     String?        @unique
+  user       User?          @relation(fields: [userId], references: [id])
+
+  reviews  Review[]
+  messages MessageLog[]
+}
+
+// ---------- Forms as data ----------
+
+model ReviewTemplate {
+  id        String  @id @default(cuid())
+  key       String  @unique
+  titleEn   String
+  titleEs   String
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  criteria  TemplateCriterion[]
+  questions TemplateQuestion[]
+  employees Employee[]
+  reviews   Review[]
+}
+
+model TemplateCriterion {
+  id         String @id @default(cuid())
+  templateId String
+  template   ReviewTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  sortOrder  Int
+  labelEn    String
+  labelEs    String
+
+  answers ReviewAnswer[]
+
+  @@unique([templateId, sortOrder])
+}
+
+model TemplateQuestion {
+  id         String @id @default(cuid())
+  templateId String
+  template   ReviewTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  sortOrder  Int
+  key        String
+  textEn     String
+  textEs     String
+
+  answers ReviewQuestionAnswer[]
+
+  @@unique([templateId, sortOrder])
+}
+
+// ---------- Reviews ----------
+
+model ReviewPeriod {
+  id        String    @id @default(cuid())
+  name      String
+  opensAt   DateTime  @default(now())
+  dueDate   DateTime
+  closedAt  DateTime?
+  createdAt DateTime  @default(now())
+
+  reviews Review[]
+}
+
+enum SideStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+}
+
+/// Overall state of one review. Supervisor and employee sides progress independently
+/// (see supervisorStatus / employeeStatus) until both are SUBMITTED, then the office takes over.
+enum ReviewStatus {
+  OPEN
+  PENDING_OFFICE
+  SENT_BACK
+  APPROVED
+  DISCUSSED
+  SIGN_LINK_SENT
+  SIGNED
+  DECLINED
+  CLOSED
+}
+
+model Review {
+  id       String @id @default(cuid())
+  periodId String
+  period   ReviewPeriod @relation(fields: [periodId], references: [id])
+
+  employeeId   String
+  employee     Employee @relation(fields: [employeeId], references: [id])
+  supervisorId String
+  supervisor   User     @relation("ReviewSupervisor", fields: [supervisorId], references: [id])
+  /// Template snapshot: the employee's template when the review was created.
+  templateId   String
+  template     ReviewTemplate @relation(fields: [templateId], references: [id])
+  language     Language @default(EN)
+
+  status           ReviewStatus @default(OPEN)
+  supervisorStatus SideStatus   @default(NOT_STARTED)
+  employeeStatus   SideStatus   @default(NOT_STARTED)
+
+  overallRating    Int?
+  overallComments  String?
+  goals            String?
+  employeeComments String?
+
+  supervisorSubmittedAt DateTime?
+  employeeSubmittedAt   DateTime?
+  approvedAt            DateTime?
+  approvedById          String?
+  approvedBy            User?     @relation("ReviewApprover", fields: [approvedById], references: [id])
+  sentBackReason        String?
+  sentBackAt            DateTime?
+  discussedAt           DateTime?
+  signedAt              DateTime?
+  declinedAt            DateTime?
+  closedAt              DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  answers         ReviewAnswer[]
+  questionAnswers ReviewQuestionAnswer[]
+  links           ReviewLink[]
+  notes           OfficeNote[]
+  payBlock        PayBlock?
+  signature       Signature?
+  events          AuditEvent[]
+  messages        MessageLog[]
+
+  @@unique([periodId, employeeId])
+  @@index([supervisorId, status])
+}
+
+enum AnswerSide {
+  EMPLOYEE
+  SUPERVISOR
+}
+
+model ReviewAnswer {
+  id          String @id @default(cuid())
+  reviewId    String
+  review      Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  criterionId String
+  criterion   TemplateCriterion @relation(fields: [criterionId], references: [id])
+  side        AnswerSide
+  /// 1 to 4
+  rating      Int?
+  comment     String?
+  updatedAt   DateTime @updatedAt
+
+  @@unique([reviewId, criterionId, side])
+}
+
+model ReviewQuestionAnswer {
+  id         String @id @default(cuid())
+  reviewId   String
+  review     Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  questionId String
+  question   TemplateQuestion @relation(fields: [questionId], references: [id])
+  answer     String
+  updatedAt  DateTime @updatedAt
+
+  @@unique([reviewId, questionId])
+}
+
+// ---------- Worker links ----------
+
+enum LinkKind {
+  SELF_EVAL
+  SIGN
+}
+
+enum MessageChannel {
+  SMS
+  EMAIL
+  HANDOFF
+}
+
+model ReviewLink {
+  id          String         @id @default(cuid())
+  reviewId    String
+  review      Review         @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  kind        LinkKind
+  /// sha256 of the raw token. The raw token exists only in the text or email.
+  tokenHash   String         @unique
+  channel     MessageChannel
+  sentTo      String?
+  expiresAt   DateTime
+  openedAt    DateTime?
+  verifiedAt  DateTime?
+  usedAt      DateTime?
+  voidedAt    DateTime?
+  attempts    Int            @default(0)
+  lockedAt    DateTime?
+  createdById String?
+  createdBy   User?          @relation(fields: [createdById], references: [id])
+  createdAt   DateTime       @default(now())
+
+  @@index([reviewId, kind])
+}
+
+model Signature {
+  id             String    @id @default(cuid())
+  reviewId       String    @unique
+  review         Review    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  typedName      String
+  /// PNG data URL drawn on the phone. Null when declined.
+  imageData      String?
+  declined       Boolean   @default(false)
+  declineComment String?
+  signedAt       DateTime  @default(now())
+  ipAddress      String?
+  userAgent      String?
+}
+
+// ---------- Office only ----------
+
+model OfficeNote {
+  id        String   @id @default(cuid())
+  reviewId  String
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+}
+
+/// Current status and recommendations from page 2 of the paper form. Office only.
+model PayBlock {
+  id              String    @id @default(cuid())
+  reviewId        String    @unique
+  review          Review    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  currentPayRate  Decimal?  @db.Decimal(10, 2)
+  lastReviewDate  DateTime?
+  lastRaiseDate   DateTime?
+  lastRaiseAmount Decimal?  @db.Decimal(10, 2)
+  raiseAmount     Decimal?  @db.Decimal(10, 2)
+  newPayRate      Decimal?  @db.Decimal(10, 2)
+  dateEffective   DateTime?
+  nextReviewDate  DateTime?
+  updatedById     String
+  updatedBy       User      @relation(fields: [updatedById], references: [id])
+  updatedAt       DateTime  @updatedAt
+}
+
+// ---------- Audit and messaging ----------
+
+model AuditEvent {
+  id          String   @id @default(cuid())
+  reviewId    String?
+  review      Review?  @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  actorUserId String?
+  actor       User?    @relation(fields: [actorUserId], references: [id])
+  /// "worker" for link actions with no signed-in user
+  actorLabel  String
+  action      String
+  field       String?
+  oldValue    String?
+  newValue    String?
+  createdAt   DateTime @default(now())
+
+  @@index([reviewId, createdAt])
+}
+
+model MessageLog {
+  id         String         @id @default(cuid())
+  reviewId   String?
+  review     Review?        @relation(fields: [reviewId], references: [id], onDelete: SetNull)
+  employeeId String?
+  employee   Employee?      @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  channel    MessageChannel
+  to         String
+  purpose    String
+  providerId String?
+  status     String
+  error      String?
+  createdAt  DateTime       @default(now())
+}

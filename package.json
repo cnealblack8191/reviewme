@@ -1,0 +1,31 @@
+{
+  "name": "reviewme",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack --hostname 127.0.0.1 --port 3010",
+    "build": "next build",
+    "start": "next start",
+    "lint": "tsc --noEmit",
+    "check": "npm run lint && npm run build",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "node --env-file-if-exists=.env prisma/seed.mjs",
+    "reminders:run": "node --env-file-if-exists=.env scripts/send-reminders.mjs"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "6.16.0",
+    "@prisma/client": "6.16.0",
+    "next": "^15.5.25",
+    "pg": "8.16.3",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.13.10",
+    "@types/react": "19.0.10",
+    "@types/react-dom": "19.0.4",
+    "prisma": "6.16.0",
+    "typescript": "5.8.2"
+  }
+}
