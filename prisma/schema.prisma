@@ -52,14 +52,16 @@ model CompanySettings {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String
-  passwordHash String
-  roles        Role[]
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  name               String
+  passwordHash       String
+  /// Set when an admin issues a temporary password; the next sign-in must change it.
+  mustChangePassword Boolean  @default(false)
+  roles              Role[]
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   employee            Employee?
   reviewsAsSupervisor Review[]     @relation("ReviewSupervisor")

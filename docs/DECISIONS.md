@@ -51,6 +51,10 @@ Recorded 2026-09-16 and 2026-09-17 with Charles Black. Each line is a decision t
 - Admin changes company settings. Office edits employees, reassigns reviewers (moves the open review), deactivates.
 - Deactivating drops untouched open reviews and voids open links; anything with work in it stays for the record.
 
+## Direct sign-in (2026-09-19)
+
+Until central.ecinc.us is defined, everyone signs in to ReviewMe directly. Admins create accounts on the Users page; each new account gets a temporary password shown once and must choose its own password at first sign-in. Admins can reset a password, change roles, and deactivate. The central handoff stays built and switches on when `CENTRAL_LOGIN_URL` is set.
+
 ## Not built yet
 
-Office edit of supervisor answers with attribution (audit table is ready), a users page for adding office and reviewer accounts (seed only today), signed-PDF email to the worker after signing.
+Office edit of supervisor answers with attribution (audit table is ready), signed-PDF email to the worker after signing.

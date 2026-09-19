@@ -5,6 +5,7 @@ const nav = [
   { href: "/office", label: "Reviews" },
   { href: "/office/employees", label: "Employees" },
   { href: "/office/periods", label: "Periods" },
+  { href: "/office/users", label: "Users", adminOnly: true },
   { href: "/office/settings", label: "Settings", adminOnly: true }
 ];
 
@@ -29,7 +30,10 @@ export function OfficeShell({ user, active, children }: { user: SessionUser; act
             <div style={{ fontWeight: 600, color: "#fff" }}>{user.name}</div>
             <small>{user.roles.map(roleLabel).join(" · ")}</small>
           </div>
-          <a href="/logout" style={{ marginLeft: "auto", color: "#9aa4af", fontSize: 12 }}>Sign out</a>
+          <div style={{ marginLeft: "auto", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 12 }}>
+            <a href="/account/password" style={{ color: "#9aa4af" }}>Password</a>
+            <a href="/logout" style={{ color: "#9aa4af" }}>Sign out</a>
+          </div>
         </div>
       </aside>
       <main className="content">{children}</main>

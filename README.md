@@ -46,7 +46,8 @@ npm run reminders:run     # daily, from cron, needs CRON_SECRET and APP_BASE_URL
 | `lib/reminders.ts` | Daily reminder job, called by `/api/cron/reminders` |
 | `lib/i18n.ts` | Worker-facing strings, `en` and `es` |
 | `app/me` | Foreman phone home |
-| `app/office` | Office desktop |
+| `app/office` | Office desktop, including Users and Settings for admins |
+| `app/account/password` | Change password, forced after a temporary password |
 | `app/r/[token]` | Worker link: verify, self-evaluation, sign, done |
 | `docs/DECISIONS.md` | Every product decision made so far |
 | `docs/MS365_EMAIL.md` | Microsoft 365 mail setup |

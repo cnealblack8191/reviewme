@@ -98,8 +98,8 @@ export async function authenticateFromCentral(email: string): Promise<Authentica
   return { ok: true, user: session };
 }
 
-function toSessionUser(user: { id: string; email: string; name: string; roles: Role[]; isActive: boolean }): SessionUser {
-  return { id: user.id, email: user.email, name: user.name, roles: user.roles, isActive: user.isActive };
+function toSessionUser(user: { id: string; email: string; name: string; roles: Role[]; isActive: boolean; mustChangePassword: boolean }): SessionUser {
+  return { id: user.id, email: user.email, name: user.name, roles: user.roles, isActive: user.isActive, mustChangePassword: user.mustChangePassword };
 }
 
 export async function createSession(user: SessionUser) {
@@ -123,6 +123,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 export async function requireUser() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (user.mustChangePassword) redirect("/account/password");
   return user;
 }
 
@@ -147,5 +148,13 @@ export async function requireReviewer() {
 
 /** Where a user lands after login: office desktop for office-only roles, phone home for reviewers. */
 export function homeFor(user: SessionUser) {
+  if (user.mustChangePassword) return "/account/password";
   return isOffice(user) && !isReviewer(user) ? "/office" : "/me";
+}
+
+/** Temporary password an admin hands to a new user: 12 characters, no look-alike letters. */
+export function generateTemporaryPassword() {
+  const alphabet = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.randomBytes(12);
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }

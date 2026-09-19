@@ -37,7 +37,7 @@ export default async function ForemanHome() {
               <small>{period ? `${period.name} · due ${period.dueDate.toLocaleDateString()}` : "No open review period"}</small>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 12 }}>{isOffice(user) ? <a href="/office" style={{ color: "#9aa4af", fontSize: 13 }}>Office</a> : null}<a href="/logout" style={{ color: "#9aa4af", fontSize: 13 }}>Sign out</a></div>
+          <div style={{ display: "flex", gap: 12 }}>{isOffice(user) ? <a href="/office" style={{ color: "#9aa4af", fontSize: 13 }}>Office</a> : null}<a href="/account/password" style={{ color: "#9aa4af", fontSize: 13 }}>Password</a><a href="/logout" style={{ color: "#9aa4af", fontSize: 13 }}>Sign out</a></div>
         </div>
         <div className="stats">
           <div className="stat"><b className="accent">{needAttention}</b><span>Need attention</span></div>

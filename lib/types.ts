@@ -6,6 +6,7 @@ export interface SessionUser {
   name: string;
   roles: Role[];
   isActive: boolean;
+  mustChangePassword: boolean;
 }
 
 export function hasRole(user: SessionUser, role: Role) {
