@@ -9,7 +9,7 @@ Recorded 2026-09-16 and 2026-09-17 with Charles Black. Each line is a decision t
 | 1 | Tenancy | Single company now. ReviewMe is its own app and repo, fully separate from Timex (confirmed 2026-09-19). `CompanySettings` holds company switches; a tenant column comes when a second customer signs. |
 | 2 | Stack | Mirror the QC app: Next.js App Router, Prisma, Postgres, PM2 behind Apache on the ECI EC2 host. |
 | 3 | Login | Email and password now. The office desktop moves behind the central.ecinc.us login soon; `lib/auth.ts` is the swap point. |
-| 4 | Roles | Foreman, Office, Admin. A user can hold several. |
+| 4 | Roles | Foreman, Project Manager, Senior Manager (reviewer roles), Office, Admin. A user can hold several. Managers review foremen and office staff from the same phone home foremen use. Revised 2026-09-19. |
 | 5 | Form | Stored as data (`ReviewTemplate`, `TemplateCriterion`, `TemplateQuestion`). The eight ECI forms are seeded from `prisma/templates.json`. |
 | 6 | Form sides | Employee and supervisor rate the same items. Shown side by side to the office and on the sign screen. |
 | 7 | Periods | Office opens a named period, twice a year. Opening creates one review per active employee. New hires added during a period get a review. |
@@ -36,7 +36,6 @@ Recorded 2026-09-16 and 2026-09-17 with Charles Black. Each line is a decision t
 
 ## Open
 
-- Role names beyond Foreman, Office, Admin: to be confirmed later.
 - Microsoft 365 sender mailbox and app registration: to be created (docs/MS365_EMAIL.md).
 - Twilio 10DLC: registration in progress (docs/TWILIO_10DLC.md).
 
@@ -48,4 +47,4 @@ Recorded 2026-09-16 and 2026-09-17 with Charles Black. Each line is a decision t
 
 ## Not built yet
 
-PDF generation and bulk export, automated reminder delivery, offline save for supervisors, office edit of supervisor answers, employee edit page, settings page, central.ecinc.us login.
+Offline save for supervisors, office edit of supervisor answers, employee edit page, settings page, central.ecinc.us login.

@@ -1,12 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { clearSession, requireForeman } from "@/lib/auth";
+import { clearSession, requireReviewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { issueLink } from "@/lib/links";
 
 export async function handoffAction(formData: FormData) {
-  const user = await requireForeman();
+  const user = await requireReviewer();
   const reviewId = String(formData.get("reviewId") ?? "");
   const review = await prisma.review.findUnique({ where: { id: reviewId } });
   if (!review || review.supervisorId !== user.id || review.employeeStatus === "SUBMITTED") return;

@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { requireForeman } from "@/lib/auth";
+import { requireReviewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isValidRating, submitSupervisorSide } from "@/lib/reviews";
 
@@ -49,13 +49,13 @@ async function persistAnswers(formData: FormData, userId: string) {
 }
 
 export async function saveSupervisorAnswersAction(formData: FormData) {
-  const user = await requireForeman();
+  const user = await requireReviewer();
   const review = await persistAnswers(formData, user.id);
   if (review) revalidatePath(`/me/review/${review.id}`);
 }
 
 export async function submitSupervisorAction(formData: FormData) {
-  const user = await requireForeman();
+  const user = await requireReviewer();
   const review = await persistAnswers(formData, user.id);
   if (!review) return;
 

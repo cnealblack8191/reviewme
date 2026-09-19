@@ -80,7 +80,9 @@ async function seedUsers() {
   if (demoPassword) {
     for (const demo of [
       { email: "office.demo@ecinc.us", name: "Demo Office", roles: ["OFFICE"] },
-      { email: "foreman.demo@ecinc.us", name: "Demo Foreman", roles: ["FOREMAN"] }
+      { email: "foreman.demo@ecinc.us", name: "Demo Foreman", roles: ["FOREMAN"] },
+      { email: "pm.demo@ecinc.us", name: "Demo Project Manager", roles: ["PROJECT_MANAGER"] },
+      { email: "senior.demo@ecinc.us", name: "Demo Senior Manager", roles: ["SENIOR_MANAGER"] }
     ]) {
       await prisma.user.upsert({
         where: { email: demo.email },
@@ -88,7 +90,7 @@ async function seedUsers() {
         create: { ...demo, passwordHash: hashPassword(demoPassword) }
       });
     }
-    console.log("Demo office and foreman accounts ready.");
+    console.log("Demo office, foreman, project manager and senior manager accounts ready.");
   }
 }
 

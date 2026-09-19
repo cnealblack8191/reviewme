@@ -1,5 +1,5 @@
 import Image from "next/image";
-import type { SessionUser } from "@/lib/types";
+import { roleLabel, type SessionUser } from "@/lib/types";
 
 const nav = [
   { href: "/office", label: "Reviews" },
@@ -26,7 +26,7 @@ export function OfficeShell({ user, active, children }: { user: SessionUser; act
         <div className="user">
           <div>
             <div style={{ fontWeight: 600, color: "#fff" }}>{user.name}</div>
-            <small>{user.roles.join(" · ").toLowerCase()}</small>
+            <small>{user.roles.map(roleLabel).join(" · ")}</small>
           </div>
           <a href="/logout" style={{ marginLeft: "auto", color: "#9aa4af", fontSize: 12 }}>Sign out</a>
         </div>

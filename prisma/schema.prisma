@@ -10,8 +10,13 @@ datasource db {
 
 // ---------- People and access ----------
 
+/// FOREMAN, PROJECT_MANAGER and SENIOR_MANAGER are reviewer roles: they complete
+/// reviews for the employees assigned to them and work from the phone home.
+/// OFFICE runs periods, approvals, exports, notes and the pay block. ADMIN adds users.
 enum Role {
   FOREMAN
+  PROJECT_MANAGER
+  SENIOR_MANAGER
   OFFICE
   ADMIN
 }
@@ -39,6 +44,10 @@ model CompanySettings {
   reminderSupervisorDays Int           @default(7)
   smsEnabled             Boolean       @default(false)
   emailEnabled           Boolean       @default(true)
+  /// IANA zone used for reminder quiet hours (texts only between 8 a.m. and 9 p.m.).
+  timezone               String        @default("America/New_York")
+  reminderQuietStartHour Int           @default(8)
+  reminderQuietEndHour   Int           @default(21)
   updatedAt              DateTime      @updatedAt
 }
 
@@ -64,22 +73,22 @@ model User {
 
 /// Anyone who receives a review. A foreman is an Employee too, reviewed by a manager.
 model Employee {
-  id          String    @id @default(cuid())
-  firstName   String
-  lastName    String
-  phone       String?
-  phoneLast4  String?
+  id           String    @id @default(cuid())
+  firstName    String
+  lastName     String
+  phone        String?
+  phoneLast4   String?
   /// scrypt hash of the last 4 of the SSN, only when identityCheck = SSN_LAST4. Never stored in clear.
   ssnLast4Hash String?
-  email       String?
-  position    String
-  iecStatus   String?
-  hireDate    DateTime?
-  jobSite     String?
-  language    Language  @default(EN)
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  email        String?
+  position     String
+  iecStatus    String?
+  hireDate     DateTime?
+  jobSite      String?
+  language     Language  @default(EN)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   templateId String
   template   ReviewTemplate @relation(fields: [templateId], references: [id])
@@ -110,7 +119,7 @@ model ReviewTemplate {
 }
 
 model TemplateCriterion {
-  id         String @id @default(cuid())
+  id         String         @id @default(cuid())
   templateId String
   template   ReviewTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   sortOrder  Int
@@ -123,7 +132,7 @@ model TemplateCriterion {
 }
 
 model TemplateQuestion {
-  id         String @id @default(cuid())
+  id         String         @id @default(cuid())
   templateId String
   template   ReviewTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   sortOrder  Int
@@ -170,18 +179,18 @@ enum ReviewStatus {
 }
 
 model Review {
-  id       String @id @default(cuid())
+  id       String       @id @default(cuid())
   periodId String
   period   ReviewPeriod @relation(fields: [periodId], references: [id])
 
   employeeId   String
-  employee     Employee @relation(fields: [employeeId], references: [id])
+  employee     Employee       @relation(fields: [employeeId], references: [id])
   supervisorId String
-  supervisor   User     @relation("ReviewSupervisor", fields: [supervisorId], references: [id])
+  supervisor   User           @relation("ReviewSupervisor", fields: [supervisorId], references: [id])
   /// Template snapshot: the employee's template when the review was created.
   templateId   String
   template     ReviewTemplate @relation(fields: [templateId], references: [id])
-  language     Language @default(EN)
+  language     Language       @default(EN)
 
   status           ReviewStatus @default(OPEN)
   supervisorStatus SideStatus   @default(NOT_STARTED)
@@ -225,28 +234,28 @@ enum AnswerSide {
 }
 
 model ReviewAnswer {
-  id          String @id @default(cuid())
+  id          String            @id @default(cuid())
   reviewId    String
-  review      Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  review      Review            @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   criterionId String
   criterion   TemplateCriterion @relation(fields: [criterionId], references: [id])
   side        AnswerSide
   /// 1 to 4
   rating      Int?
   comment     String?
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime          @updatedAt
 
   @@unique([reviewId, criterionId, side])
 }
 
 model ReviewQuestionAnswer {
-  id         String @id @default(cuid())
+  id         String           @id @default(cuid())
   reviewId   String
-  review     Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  review     Review           @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   questionId String
   question   TemplateQuestion @relation(fields: [questionId], references: [id])
   answer     String
-  updatedAt  DateTime @updatedAt
+  updatedAt  DateTime         @updatedAt
 
   @@unique([reviewId, questionId])
 }
@@ -265,38 +274,41 @@ enum MessageChannel {
 }
 
 model ReviewLink {
-  id          String         @id @default(cuid())
-  reviewId    String
-  review      Review         @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  kind        LinkKind
-  /// sha256 of the raw token. The raw token exists only in the text or email.
-  tokenHash   String         @unique
-  channel     MessageChannel
-  sentTo      String?
-  expiresAt   DateTime
-  openedAt    DateTime?
-  verifiedAt  DateTime?
-  usedAt      DateTime?
-  voidedAt    DateTime?
-  attempts    Int            @default(0)
-  lockedAt    DateTime?
-  createdById String?
-  createdBy   User?          @relation(fields: [createdById], references: [id])
-  createdAt   DateTime       @default(now())
+  id              String         @id @default(cuid())
+  reviewId        String
+  review          Review         @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  kind            LinkKind
+  /// sha256 of the raw token, used to look a link up.
+  tokenHash       String         @unique
+  /// The raw token encrypted with a key derived from SESSION_SECRET, so a
+  /// reminder can resend the same link without minting a new one.
+  tokenCiphertext String?
+  channel         MessageChannel
+  sentTo          String?
+  expiresAt       DateTime
+  openedAt        DateTime?
+  verifiedAt      DateTime?
+  usedAt          DateTime?
+  voidedAt        DateTime?
+  attempts        Int            @default(0)
+  lockedAt        DateTime?
+  createdById     String?
+  createdBy       User?          @relation(fields: [createdById], references: [id])
+  createdAt       DateTime       @default(now())
 
   @@index([reviewId, kind])
 }
 
 model Signature {
-  id             String    @id @default(cuid())
-  reviewId       String    @unique
-  review         Review    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  reviewId       String   @unique
+  review         Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   typedName      String
   /// PNG data URL drawn on the phone. Null when declined.
   imageData      String?
-  declined       Boolean   @default(false)
+  declined       Boolean  @default(false)
   declineComment String?
-  signedAt       DateTime  @default(now())
+  signedAt       DateTime @default(now())
   ipAddress      String?
   userAgent      String?
 }

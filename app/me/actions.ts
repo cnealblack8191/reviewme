@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireForeman } from "@/lib/auth";
+import { requireReviewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { markDiscussed, markSignLinkSent } from "@/lib/reviews";
 import { issueLink } from "@/lib/links";
@@ -9,7 +9,7 @@ import { deliver } from "@/lib/messaging";
 
 /** Foreman confirms the face-to-face meeting. That releases the sign link to the worker. */
 export async function markDiscussedAction(formData: FormData) {
-  const user = await requireForeman();
+  const user = await requireReviewer();
   const reviewId = String(formData.get("reviewId") ?? "");
 
   const review = await prisma.review.findUnique({ where: { id: reviewId }, include: { employee: true } });

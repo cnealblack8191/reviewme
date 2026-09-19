@@ -26,6 +26,7 @@ npm run db:generate
 npm run db:push
 npm run db:seed           # eight ECI form templates + admin account
 npm run dev               # http://127.0.0.1:3010
+npm run reminders:run     # daily, from cron, needs CRON_SECRET and APP_BASE_URL
 ```
 
 ## Layout
@@ -39,6 +40,8 @@ npm run dev               # http://127.0.0.1:3010
 | `lib/links.ts` | One-time worker links: create, resolve, identity check, lock |
 | `lib/reviews.ts` | Review status transitions |
 | `lib/messaging/` | Twilio SMS and Microsoft 365 (Graph) email adapters |
+| `lib/review-pdf.ts` | Office and employee PDFs, merged export by reviewer or company |
+| `lib/reminders.ts` | Daily reminder job, called by `/api/cron/reminders` |
 | `lib/i18n.ts` | Worker-facing strings, `en` and `es` |
 | `app/me` | Foreman phone home |
 | `app/office` | Office desktop |

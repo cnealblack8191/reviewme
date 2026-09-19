@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
-import { requireForeman } from "@/lib/auth";
+import { requireReviewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { averageRating } from "@/lib/reviews";
 import { saveSupervisorAnswersAction, submitSupervisorAction } from "@/app/me/review/[reviewId]/actions";
 
 export default async function SupervisorReviewPage({ params }: { params: Promise<{ reviewId: string }> }) {
-  const user = await requireForeman();
+  const user = await requireReviewer();
   const { reviewId } = await params;
 
   const review = await prisma.review.findUnique({

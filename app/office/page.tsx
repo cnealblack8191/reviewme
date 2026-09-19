@@ -42,7 +42,11 @@ export default async function OfficeHome({ searchParams }: { searchParams: Promi
         </div>
         <div className="actions">
           <a className="btn btn-outline" href="/office/employees/new">Add employee</a>
-          {!period ? <a className="btn btn-primary" href="/office/periods">Open a period</a> : null}
+          {period ? (
+            <a className="btn btn-primary" href={`/office/export?period=${period.id}${reviewer ? `&reviewer=${reviewer}` : ""}`} target="_blank" rel="noopener">
+              Download / print {reviewer ? "this reviewer" : "entire company"}
+            </a>
+          ) : <a className="btn btn-primary" href="/office/periods">Open a period</a>}
         </div>
       </div>
 
@@ -61,6 +65,12 @@ export default async function OfficeHome({ searchParams }: { searchParams: Promi
             {reviewers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
           <button className="btn btn-outline" style={{ height: 34 }} type="submit">Filter</button>
+          {period ? (
+            <span style={{ marginLeft: "auto", display: "flex", gap: 12, alignItems: "center" }}>
+              <a href={`/office/export?period=${period.id}${reviewer ? `&reviewer=${reviewer}` : ""}&drafts=1`} target="_blank" rel="noopener" style={{ fontWeight: 600 }}>PDF with drafts</a>
+              <a href={`/office/export?period=${period.id}${reviewer ? `&reviewer=${reviewer}` : ""}&download=1`} style={{ fontWeight: 600 }}>Download completed</a>
+            </span>
+          ) : null}
         </form>
         <table>
           <thead>

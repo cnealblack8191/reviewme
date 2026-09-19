@@ -10,7 +10,7 @@ import { redirect } from "next/navigation";
 import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
-import { isForeman, isOffice, type SessionUser } from "@/lib/types";
+import { isOffice, isReviewer, type SessionUser } from "@/lib/types";
 
 const SESSION_COOKIE = "reviewme-session";
 const SESSION_MAX_AGE = 60 * 60 * 10;
@@ -112,13 +112,14 @@ export async function requireOffice() {
   return user;
 }
 
-export async function requireForeman() {
+/** Foreman, Project Manager, Senior Manager, or any office role. */
+export async function requireReviewer() {
   const user = await requireUser();
-  if (!isForeman(user) && !isOffice(user)) redirect("/login");
+  if (!isReviewer(user) && !isOffice(user)) redirect("/login");
   return user;
 }
 
-/** Where a user lands after login: office desktop for office roles, phone home for everyone else. */
+/** Where a user lands after login: office desktop for office-only roles, phone home for reviewers. */
 export function homeFor(user: SessionUser) {
-  return isOffice(user) && !isForeman(user) ? "/office" : "/me";
+  return isOffice(user) && !isReviewer(user) ? "/office" : "/me";
 }

@@ -38,6 +38,8 @@ export default async function OfficeReviewPage({ params }: { params: Promise<{ r
           <div style={{ color: "var(--muted)", fontSize: 14 }}>{review.employee.position} · Reviewer {review.supervisor.name} · <span className="chip chip-muted">{describeStatus(review)}</span></div>
         </div>
         <div className="actions">
+          <a className="btn btn-outline" href={`/office/reviews/${review.id}/pdf`} target="_blank" rel="noopener">Office PDF</a>
+          <a className="btn btn-outline" href={`/office/reviews/${review.id}/pdf?copy=employee`} target="_blank" rel="noopener">Employee copy</a>
           {review.employeeStatus !== "SUBMITTED" ? (
             <form action={sendSelfLinkAction}><input type="hidden" name="reviewId" value={review.id} /><button className="btn btn-outline" type="submit">Send self-evaluation link</button></form>
           ) : null}

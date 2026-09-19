@@ -1,10 +1,10 @@
-import { requireForeman } from "@/lib/auth";
+import { requireReviewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { handoffAction } from "@/app/me/handoff/actions";
 
 /** Last resort: the foreman hands their own phone to a worker whose link did not reach them. */
 export default async function HandoffPage() {
-  const user = await requireForeman();
+  const user = await requireReviewer();
   const waiting = await prisma.review.findMany({
     where: { supervisorId: user.id, status: { in: ["OPEN", "SENT_BACK"] }, employeeStatus: { not: "SUBMITTED" }, period: { closedAt: null } },
     include: { employee: true },

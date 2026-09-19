@@ -2,12 +2,13 @@ import { requireOffice } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { OfficeShell } from "@/components/office-shell";
 import { createEmployeeAction } from "@/app/office/employees/new/actions";
+import { roleLabel } from "@/lib/types";
 
 export default async function NewEmployeePage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
   const user = await requireOffice();
   const params = await searchParams;
   const templates = await prisma.reviewTemplate.findMany({ where: { isActive: true }, include: { criteria: { select: { id: true } } }, orderBy: { sortOrder: "asc" } });
-  const reviewers = await prisma.user.findMany({ where: { isActive: true, roles: { hasSome: ["FOREMAN", "OFFICE", "ADMIN"] } }, select: { id: true, name: true, roles: true }, orderBy: { name: "asc" } });
+  const reviewers = await prisma.user.findMany({ where: { isActive: true, roles: { hasSome: ["FOREMAN", "PROJECT_MANAGER", "SENIOR_MANAGER", "OFFICE", "ADMIN"] } }, select: { id: true, name: true, roles: true }, orderBy: { name: "asc" } });
   const settings = await prisma.companySettings.findUnique({ where: { id: "eci" } });
 
   return (
@@ -43,10 +44,10 @@ export default async function NewEmployeePage({ searchParams }: { searchParams: 
               {templates.map((t) => <option key={t.id} value={t.id}>{t.titleEn} · {t.criteria.length} items</option>)}
             </select>
           </label>
-          <label className="field span2"><span>Reviewer <span className="hint">· their foreman for crew, a Project Manager or Senior Manager for foremen</span></span>
+          <label className="field span2"><span>Reviewer <span className="hint">· their foreman for crew, a Project Manager or Senior Manager for foremen and office staff</span></span>
             <select name="reviewerId" required defaultValue="">
               <option value="" disabled>Choose a reviewer</option>
-              {reviewers.map((r) => <option key={r.id} value={r.id}>{r.name} · {r.roles.join(", ").toLowerCase()}</option>)}
+              {reviewers.map((r) => <option key={r.id} value={r.id}>{r.name} · {r.roles.map(roleLabel).join(", ")}</option>)}
             </select>
           </label>
         </div>

@@ -15,6 +15,32 @@ export function hashToken(token: string) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+// ---- Token at rest: AES-256-GCM under a key derived from SESSION_SECRET ----
+// The hash finds a link; the ciphertext lets a reminder resend the same URL.
+
+function tokenKey() {
+  const secret = process.env.SESSION_SECRET ?? "local-dev-session-secret";
+  return crypto.createHash("sha256").update(`${secret}:review-links`).digest();
+}
+
+export function encryptToken(token: string) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", tokenKey(), iv);
+  const body = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
+  return [iv, body, cipher.getAuthTag()].map((b) => b.toString("base64url")).join(".");
+}
+
+export function decryptToken(ciphertext: string): string | null {
+  try {
+    const [iv, body, tag] = ciphertext.split(".").map((part) => Buffer.from(part, "base64url"));
+    const decipher = crypto.createDecipheriv("aes-256-gcm", tokenKey(), iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(body), decipher.final()]).toString("utf8");
+  } catch {
+    return null;
+  }
+}
+
 export function linkUrl(token: string) {
   const base = (process.env.APP_BASE_URL ?? "http://127.0.0.1:3010").replace(/\/$/, "");
   return `${base}/r/${token}`;
@@ -43,6 +69,7 @@ export async function issueLink(input: {
       channel: input.channel,
       sentTo: input.sentTo,
       tokenHash: hashToken(token),
+      tokenCiphertext: encryptToken(token),
       expiresAt,
       createdById: input.createdById
     }

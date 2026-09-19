@@ -1,14 +1,15 @@
 import Image from "next/image";
-import { requireForeman } from "@/lib/auth";
+import { requireReviewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { markDiscussedAction } from "@/app/me/actions";
+import { isOffice } from "@/lib/types";
 
 function initials(first: string, last: string) {
   return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
 }
 
 export default async function ForemanHome() {
-  const user = await requireForeman();
+  const user = await requireReviewer();
 
   const period = await prisma.reviewPeriod.findFirst({ where: { closedAt: null }, orderBy: { opensAt: "desc" } });
   const reviews = period
@@ -36,7 +37,7 @@ export default async function ForemanHome() {
               <small>{period ? `${period.name} · due ${period.dueDate.toLocaleDateString()}` : "No open review period"}</small>
             </div>
           </div>
-          <a href="/logout" className="btn btn-ghost" style={{ color: "#9aa4af", padding: 0 }}>Sign out</a>
+          <div style={{ display: "flex", gap: 12 }}>{isOffice(user) ? <a href="/office" style={{ color: "#9aa4af", fontSize: 13 }}>Office</a> : null}<a href="/logout" style={{ color: "#9aa4af", fontSize: 13 }}>Sign out</a></div>
         </div>
         <div className="stats">
           <div className="stat"><b className="accent">{needAttention}</b><span>Need attention</span></div>
