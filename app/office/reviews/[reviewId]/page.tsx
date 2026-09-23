@@ -3,11 +3,13 @@ import { requireOffice } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { describeStatus } from "@/lib/reviews";
 import { OfficeShell } from "@/components/office-shell";
-import { addOfficeNoteAction, approveAction, sendBackAction, sendSelfLinkAction, savePayBlockAction } from "@/app/office/reviews/[reviewId]/actions";
+import { addOfficeNoteAction, approveAction, closeReviewAction, createManualLinkAction, revealLinkAction, revealedUrl, sendBackAction, sendSelfLinkAction, sendSignLinkAction, savePayBlockAction } from "@/app/office/reviews/[reviewId]/actions";
 
-export default async function OfficeReviewPage({ params }: { params: Promise<{ reviewId: string }> }) {
+export default async function OfficeReviewPage({ params, searchParams }: { params: Promise<{ reviewId: string }>; searchParams: Promise<{ reveal?: string }> }) {
   const user = await requireOffice();
   const { reviewId } = await params;
+  const { reveal } = await searchParams;
+  const revealed = await revealedUrl(reviewId, reveal);
 
   const review = await prisma.review.findUnique({
     where: { id: reviewId },
@@ -40,12 +42,13 @@ export default async function OfficeReviewPage({ params }: { params: Promise<{ r
         <div className="actions">
           <a className="btn btn-outline" href={`/office/reviews/${review.id}/pdf`} target="_blank" rel="noopener">Office PDF</a>
           <a className="btn btn-outline" href={`/office/reviews/${review.id}/pdf?copy=employee`} target="_blank" rel="noopener">Employee copy</a>
-          {review.employeeStatus !== "SUBMITTED" ? (
-            <form action={sendSelfLinkAction}><input type="hidden" name="reviewId" value={review.id} /><button className="btn btn-outline" type="submit">Send self-evaluation link</button></form>
-          ) : null}
           {review.status === "PENDING_OFFICE" ? (
             <form action={approveAction}><input type="hidden" name="reviewId" value={review.id} /><button className="btn btn-primary" type="submit">Approve</button></form>
           ) : null}
+          {review.status === "SIGNED" || review.status === "DECLINED" ? (
+            <form action={closeReviewAction}><input type="hidden" name="reviewId" value={review.id} /><button className="btn btn-primary" type="submit">Close and file</button></form>
+          ) : null}
+          {review.status === "CLOSED" ? <span className="chip chip-ok" style={{ height: 42 }}>Filed {review.closedAt?.toLocaleDateString()}</span> : null}
         </div>
       </div>
 
@@ -105,17 +108,47 @@ export default async function OfficeReviewPage({ params }: { params: Promise<{ r
         </div>
 
         <aside style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <section className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div className="group-title" style={{ padding: 0 }}><span>Links</span></div>
-            {review.links.length === 0 ? <small style={{ color: "var(--muted)" }}>No links sent yet.</small> : null}
-            {review.links.map((l) => (
-              <div key={l.id} style={{ fontSize: 13, display: "flex", justifyContent: "space-between", gap: 8 }}>
-                <span>{l.kind === "SELF_EVAL" ? "Self-eval" : "Sign"} · {l.channel}</span>
-                <span style={{ color: l.usedAt ? "var(--ok)" : l.voidedAt || l.lockedAt || l.expiresAt < new Date() ? "var(--danger)" : "var(--muted)" }}>
-                  {l.usedAt ? "used" : l.lockedAt ? "locked" : l.voidedAt ? "voided" : l.expiresAt < new Date() ? "expired" : l.verifiedAt ? "verified" : l.openedAt ? "opened" : "sent"}
-                </span>
+          <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="group-title" style={{ padding: 0 }}><span>Worker links</span></div>
+            {!review.employee.phone && !review.employee.email ? <div style={{ fontSize: 13, color: "var(--warn)", fontWeight: 600 }}>No phone or email on file. Create a link and send it by hand.</div> : null}
+            {revealed ? (
+              <div style={{ background: "var(--ok-soft)", border: "1px solid var(--ok)", borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ok)" }}>{revealed.kind === "SIGN" ? "Sign link" : "Self-evaluation link"} · expires {revealed.expiresAt.toLocaleDateString()}</div>
+                <input readOnly value={revealed.url} onFocus={undefined} style={{ width: "100%", fontSize: 12, fontFamily: "monospace", border: "1px solid var(--line)", borderRadius: 8, padding: "6px 8px", background: "#fff" }} />
+                <small style={{ color: "var(--muted)" }}>Copy and text it from your phone or hand it to the worker. It works once and the worker still confirms their last 4.</small>
               </div>
-            ))}
+            ) : null}
+            {review.links.length === 0 ? <small style={{ color: "var(--muted)" }}>No links yet.</small> : null}
+            {review.links.slice(0, 6).map((l) => {
+              const active = !l.usedAt && !l.voidedAt && !l.lockedAt && l.expiresAt >= new Date();
+              const state = l.usedAt ? "used" : l.lockedAt ? "locked" : l.voidedAt ? "voided" : l.expiresAt < new Date() ? "expired" : l.verifiedAt ? "verified" : l.openedAt ? "opened" : "sent";
+              return (
+                <div key={l.id} style={{ fontSize: 13, display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                  <span>{l.kind === "SELF_EVAL" ? "Self-eval" : "Sign"} · {l.channel.toLowerCase()} · {l.createdAt.toLocaleDateString()}</span>
+                  <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={{ color: active ? "var(--muted)" : l.usedAt ? "var(--ok)" : "var(--danger)" }}>{state}</span>
+                    {active && l.tokenCiphertext ? (
+                      <form action={revealLinkAction}><input type="hidden" name="reviewId" value={review.id} /><input type="hidden" name="linkId" value={l.id} /><button className="btn btn-ghost" type="submit" style={{ height: 26, padding: "0 6px", fontSize: 12 }}>Show</button></form>
+                    ) : null}
+                  </span>
+                </div>
+              );
+            })}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: "1px solid #eef0f2", paddingTop: 10 }}>
+              {review.employeeStatus !== "SUBMITTED" ? (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <form action={sendSelfLinkAction} style={{ flex: 1 }}><input type="hidden" name="reviewId" value={review.id} /><button className="btn btn-outline" type="submit" style={{ height: 34, width: "100%" }} disabled={!review.employee.phone && !review.employee.email}>Send self-eval link</button></form>
+                  <form action={createManualLinkAction}><input type="hidden" name="reviewId" value={review.id} /><input type="hidden" name="kind" value="SELF_EVAL" /><button className="btn btn-outline" type="submit" style={{ height: 34 }}>Create to send by hand</button></form>
+                </div>
+              ) : null}
+              {["APPROVED", "DISCUSSED", "SIGN_LINK_SENT"].includes(review.status) ? (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <form action={sendSignLinkAction} style={{ flex: 1 }}><input type="hidden" name="reviewId" value={review.id} /><button className="btn btn-primary" type="submit" style={{ height: 34, width: "100%" }} disabled={!review.employee.phone && !review.employee.email}>{review.status === "SIGN_LINK_SENT" ? "Resend sign link" : "Send sign link"}</button></form>
+                  <form action={createManualLinkAction}><input type="hidden" name="reviewId" value={review.id} /><input type="hidden" name="kind" value="SIGN" /><button className="btn btn-outline" type="submit" style={{ height: 34 }}>Create to send by hand</button></form>
+                </div>
+              ) : null}
+              {review.status === "APPROVED" ? <small style={{ color: "var(--muted)" }}>Normally the sign link goes out when {review.supervisor.name} taps Discussed. Sending now skips that step.</small> : null}
+            </div>
           </section>
 
           <form action={savePayBlockAction} className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>

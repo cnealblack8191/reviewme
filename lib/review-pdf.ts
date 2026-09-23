@@ -429,3 +429,54 @@ export async function buildMergedPdf(opts: MergedExportOptions) {
   const filename = `${period.name}-${supervisor ? supervisor.name : "entire-company"}-reviews.pdf`.replace(/\s+/g, "_");
   return { bytes: await doc.save(), filename, count: reviews.length };
 }
+
+
+/** Every review on file for one employee, oldest first, office copies behind a cover. */
+export async function buildEmployeeFilePdf(employeeId: string) {
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId }, include: { reviewer: { select: { name: true } } } });
+  if (!employee) return null;
+  const reviews = await prisma.review.findMany({
+    where: { employeeId, supervisorStatus: "SUBMITTED" },
+    include: reviewInclude,
+    orderBy: { createdAt: "asc" }
+  });
+
+  const { doc, font, bold, logo } = await newDoc();
+  const w = new Writer(doc, font, bold, logo);
+  if (logo) w.page.drawImage(logo, { x: PAGE.margin, y: w.y - 56, width: 56, height: 56 });
+  w.page.drawText("ELECTRICAL CONTRACTOR INC.", { x: PAGE.margin + 68, y: w.y - 18, size: 12, font: bold });
+  w.page.drawText("EMPLOYEE REVIEW FILE", { x: PAGE.margin + 68, y: w.y - 36, size: 16, font: bold });
+  w.page.drawText(`${employee.firstName} ${employee.lastName} · ${employee.position}${employee.hireDate ? ` · hired ${fmtDate(employee.hireDate)}` : ""}`, { x: PAGE.margin + 68, y: w.y - 52, size: 10, font, color: MUTED });
+  w.y -= 76;
+  w.rule(INK);
+  w.gap(4);
+  w.text(`${reviews.length} review${reviews.length === 1 ? "" : "s"} on file. Office copies, pay block included.`, PAGE.margin, 9.5, { color: MUTED });
+  w.gap(10);
+
+  const cols = { period: PAGE.margin, sup: 200, status: 340, overall: 470, signed: 520 };
+  w.ensure(18);
+  w.page.drawRectangle({ x: PAGE.margin, y: w.y - 16, width: PAGE.w - 2 * PAGE.margin, height: 16, color: SOFT });
+  for (const [label, x] of [["PERIOD", cols.period + 4], ["REVIEWER", cols.sup], ["STATUS", cols.status], ["OVERALL", cols.overall], ["SIGNED", cols.signed]] as const) {
+    w.page.drawText(label, { x, y: w.y - 11.5, size: 8, font: bold });
+  }
+  w.y -= 16;
+  for (const r of reviews) {
+    w.ensure(16);
+    const y = w.y - 11;
+    w.page.drawText(r.period.name, { x: cols.period + 4, y, size: 9, font });
+    w.page.drawText(r.supervisor.name, { x: cols.sup, y, size: 9, font });
+    w.page.drawText(describeStatus(r), { x: cols.status, y, size: 9, font });
+    w.page.drawText(r.overallRating?.toString() ?? "—", { x: cols.overall + 10, y, size: 9, font: bold });
+    w.page.drawText(r.signature ? (r.signature.declined ? "declined" : fmtDate(r.signature.signedAt)) : "", { x: cols.signed, y, size: 9, font });
+    w.y -= 15;
+    w.page.drawLine({ start: { x: PAGE.margin, y: w.y }, end: { x: PAGE.w - PAGE.margin, y: w.y }, thickness: 0.5, color: LINE });
+  }
+
+  for (const review of reviews) {
+    w.newPage();
+    await renderReview(w, review, "office", "EN");
+  }
+  stampFooters(doc, font, `employee file · ${employee.lastName}, ${employee.firstName}`);
+  const filename = `${employee.lastName}-${employee.firstName}-review-file.pdf`.replace(/\s+/g, "_");
+  return { bytes: await doc.save(), filename, count: reviews.length };
+}

@@ -1,23 +1,22 @@
-/** Twilio Programmable Messaging over plain fetch, no SDK. */
-export async function sendSms(to: string, body: string) {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_FROM_NUMBER;
+/** Twilio Programmable Messaging over plain fetch, no SDK. Credentials from Settings or the environment. */
+import { getTwilioConfig } from "@/lib/messaging/config";
 
-  if (!sid || !token || !from) {
+export async function sendSms(to: string, body: string) {
+  const config = await getTwilioConfig();
+  if (!config) {
     return { status: "skipped:twilio-not-configured" as const, providerId: undefined };
   }
 
-  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${config.accountSid}/Messages.json`, {
     method: "POST",
     headers: {
-      Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString("base64")}`,
+      Authorization: `Basic ${Buffer.from(`${config.accountSid}:${config.authToken}`).toString("base64")}`,
       "Content-Type": "application/x-www-form-urlencoded"
     },
-    body: new URLSearchParams({ To: to, From: from, Body: body })
+    body: new URLSearchParams({ To: to, From: config.fromNumber, Body: body })
   });
 
-  const payload = (await response.json()) as { sid?: string; message?: string };
+  const payload = (await response.json().catch(() => ({}))) as { sid?: string; message?: string };
   if (!response.ok) {
     throw new Error(payload.message ?? `Twilio responded ${response.status}`);
   }

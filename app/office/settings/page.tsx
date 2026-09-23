@@ -1,7 +1,9 @@
 import { requireAdmin } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { OfficeShell } from "@/components/office-shell";
-import { saveSettingsAction, sendTestEmailAction } from "@/app/office/settings/actions";
+import { clearGraphAction, clearTwilioAction, saveGraphAction, saveSettingsAction, saveTwilioAction, sendTestEmailAction, sendTestSmsAction } from "@/app/office/settings/actions";
+import { getGraphConfig, getTwilioConfig } from "@/lib/messaging/config";
+import { decryptSecret, maskTail } from "@/lib/secrets";
 
 const TIMEZONES = ["America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles"];
 
@@ -9,13 +11,22 @@ function configured(keys: string[]) {
   return keys.every((k) => Boolean(process.env[k]));
 }
 
-export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ saved?: string; test?: string }> }) {
+function decryptHint(ciphertext: string | null) {
+  return decryptSecret(ciphertext);
+}
+
+function Status({ ready, source }: { ready: boolean; source?: string }) {
+  return <span className={ready ? "chip chip-ok" : "chip chip-warn"}>{ready ? `Configured · ${source}` : "Not configured"}</span>;
+}
+
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ saved?: string; test?: string; testsms?: string; error?: string }> }) {
   const user = await requireAdmin();
   const sp = await searchParams;
   const s = await getSettings();
-  const twilioReady = configured(["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER"]);
-  const graphReady = configured(["MICROSOFT_GRAPH_TENANT_ID", "MICROSOFT_GRAPH_CLIENT_ID", "MICROSOFT_GRAPH_SENDER", "MICROSOFT_GRAPH_CERTIFICATE_PATH", "MICROSOFT_GRAPH_PRIVATE_KEY_PATH"]);
-  const centralReady = configured(["CENTRAL_LOGIN_URL", "CENTRAL_LOGIN_SECRET"]);
+  const twilio = await getTwilioConfig();
+  const graph = await getGraphConfig();
+  const centralReady = configured(["CENTRAL_LOGIN_URL"]) && (configured(["CENTRAL_LOGIN_SECRET"]) || configured(["CENTRAL_LOGIN_PUBLIC_KEY"]));
+  const graphMode = s.graphClientSecretEnc ? "secret" : s.graphCertificatePemEnc ? "certificate" : "secret";
 
   return (
     <OfficeShell user={user} active="/office/settings">
@@ -27,6 +38,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </div>
       {sp.saved ? <p style={{ color: "var(--ok)", fontWeight: 600 }}>Saved.</p> : null}
       {sp.test ? <p style={{ color: sp.test === "sent" ? "var(--ok)" : "var(--warn)", fontWeight: 600 }}>Test email: {sp.test}</p> : null}
+      {sp.testsms ? <p style={{ color: sp.testsms === "sent" ? "var(--ok)" : "var(--warn)", fontWeight: 600 }}>Test text: {sp.testsms}</p> : null}
+      {sp.error ? <p className="error">{sp.error}</p> : null}
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 620px) minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
         <form action={saveSettingsAction} className="dialog" style={{ maxWidth: "none" }}>
@@ -67,18 +80,65 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </form>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ fontWeight: 700 }}>Connections</div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}><span>Twilio texting</span><span className={twilioReady ? "chip chip-ok" : "chip chip-warn"}>{twilioReady ? "Configured" : "Not configured"}</span></div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}><span>Microsoft 365 email</span><span className={graphReady ? "chip chip-ok" : "chip chip-warn"}>{graphReady ? "Configured" : "Not configured"}</span></div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}><span>Central ECI login</span><span className={centralReady ? "chip chip-ok" : "chip chip-muted"}>{centralReady ? "Configured" : "Off"}</span></div>
-            <small style={{ color: "var(--muted)" }}>Credentials live in the server environment, not here. Setup steps are in the docs folder.</small>
+          <section className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontWeight: 700 }}>Twilio texting</div>
+              <Status ready={Boolean(twilio)} source={twilio?.source} />
+            </div>
+            <form action={saveTwilioAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <label className="field"><span>Account SID</span><input name="twilioAccountSid" defaultValue={s.twilioAccountSid ?? ""} placeholder="AC…" autoComplete="off" /></label>
+              <label className="field"><span>Auth token <span className="hint">· {s.twilioAuthTokenEnc ? "on file, leave blank to keep" : "not on file"}</span></span><input name="twilioAuthToken" type="password" autoComplete="new-password" placeholder={s.twilioAuthTokenEnc ? "••••••••" : ""} /></label>
+              <label className="field"><span>From number <span className="hint">· E.164, +15551234567</span></span><input name="twilioFromNumber" defaultValue={s.twilioFromNumber ?? ""} placeholder="+1…" /></label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn btn-primary" type="submit" style={{ height: 34 }}>Save Twilio</button>
+                {s.twilioAccountSid ? <button className="btn btn-ghost" type="submit" formAction={clearTwilioAction} style={{ height: 34 }}>Clear</button> : null}
+              </div>
+            </form>
+            <form action={sendTestSmsAction} style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+              <label className="field" style={{ flex: 1 }}><span>Send a test text to</span><input name="to" type="tel" placeholder="+1…" required /></label>
+              <button className="btn btn-outline" type="submit" style={{ height: 42 }}>Send</button>
+            </form>
+            <small style={{ color: "var(--muted)" }}>Texts to workers also need the Send texts switch on. Registration steps: docs/TWILIO_10DLC.md.</small>
+          </section>
+
+          <section className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontWeight: 700 }}>Microsoft 365 email</div>
+              <Status ready={Boolean(graph)} source={graph?.source} />
+            </div>
+            <form action={saveGraphAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <label className="field"><span>Sender mailbox</span><input name="graphSender" type="email" defaultValue={s.graphSender ?? ""} placeholder="reviews@ecinc.us" /></label>
+              <label className="field"><span>Tenant ID</span><input name="graphTenantId" defaultValue={s.graphTenantId ?? ""} autoComplete="off" /></label>
+              <label className="field"><span>Application (client) ID</span><input name="graphClientId" defaultValue={s.graphClientId ?? ""} autoComplete="off" /></label>
+              <label className="field"><span>Credential</span>
+                <select name="graphMode" defaultValue={graphMode}>
+                  <option value="secret">Client secret</option>
+                  <option value="certificate">Certificate and private key</option>
+                </select>
+              </label>
+              <label className="field"><span>Client secret <span className="hint">· {s.graphClientSecretEnc ? `on file ${maskTail(decryptHint(s.graphClientSecretEnc))}, leave blank to keep` : "for the client secret option"}</span></span><input name="graphClientSecret" type="password" autoComplete="new-password" /></label>
+              <label className="field"><span>Certificate PEM <span className="hint">· {s.graphCertificatePemEnc ? "on file, leave blank to keep" : "for the certificate option"}</span></span><textarea name="graphCertificatePem" rows={3} placeholder="-----BEGIN CERTIFICATE-----" style={{ fontFamily: "monospace", fontSize: 12 }} /></label>
+              <label className="field"><span>Private key PEM <span className="hint">· {s.graphPrivateKeyPemEnc ? "on file, leave blank to keep" : ""}</span></span><textarea name="graphPrivateKeyPem" rows={3} placeholder="-----BEGIN PRIVATE KEY-----" style={{ fontFamily: "monospace", fontSize: 12 }} /></label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn btn-primary" type="submit" style={{ height: 34 }}>Save Microsoft 365</button>
+                {s.graphClientId ? <button className="btn btn-ghost" type="submit" formAction={clearGraphAction} style={{ height: 34 }}>Clear</button> : null}
+              </div>
+            </form>
             <form action={sendTestEmailAction}>
               <button className="btn btn-outline" type="submit" style={{ height: 34 }}>Send a test email to {user.email}</button>
             </form>
+            <small style={{ color: "var(--muted)" }}>The app registration needs Mail.Send with admin consent. Steps: docs/MS365_EMAIL.md.</small>
+          </section>
+
+          <section className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontWeight: 700 }}>Central ECI login</div>
+              <span className={centralReady ? "chip chip-ok" : "chip chip-muted"}>{centralReady ? "Configured" : "Off"}</span>
+            </div>
+            <small style={{ color: "var(--muted)" }}>Set in the server environment when central.ecinc.us is ready. Contract: docs/CENTRAL_LOGIN.md.</small>
           </section>
           <section className="card" style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.5 }}>
-            Switching the identity check to SSN means every employee needs their last 4 entered on the Employees page before their next link. Workers without it on file cannot open a link.
+            Credentials saved here are encrypted in the database and win over the server environment. Switching the identity check to SSN means every employee needs their last 4 entered on the Employees page before their next link. Workers without it on file cannot open a link.
           </section>
         </div>
       </div>

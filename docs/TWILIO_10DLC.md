@@ -12,8 +12,10 @@ one to three weeks. Email works while this is pending.
 3. Register the campaign with the text below. Use case: **Account
    Notifications** (or Mixed if reminders are added later).
 4. Attach the number to the campaign's messaging service.
-5. Put `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` in `.env`
-   and flip `smsEnabled` in company settings. Until then SMS is logged, not sent.
+5. Open Settings in the office desktop as an admin, fill the Twilio card with
+   the Account SID, Auth token, and From number, use **Send a test text**, then
+   turn on **Send texts**. The `TWILIO_*` environment variables are only a
+   fallback. Until then SMS is logged, not sent.
 
 ## Campaign description (paste)
 

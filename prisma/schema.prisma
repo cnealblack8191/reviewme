@@ -48,7 +48,20 @@ model CompanySettings {
   timezone               String        @default("America/New_York")
   reminderQuietStartHour Int           @default(8)
   reminderQuietEndHour   Int           @default(21)
-  updatedAt              DateTime      @updatedAt
+
+  // Messaging credentials entered on the admin Settings page. Secrets are
+  // AES-256-GCM ciphertext (lib/secrets.ts). Environment variables are the fallback.
+  twilioAccountSid       String?
+  twilioAuthTokenEnc     String?
+  twilioFromNumber       String?
+  graphTenantId          String?
+  graphClientId          String?
+  graphSender            String?
+  graphClientSecretEnc   String?
+  graphCertificatePemEnc String?
+  graphPrivateKeyPemEnc  String?
+
+  updatedAt DateTime @updatedAt
 }
 
 model User {
@@ -273,6 +286,8 @@ enum MessageChannel {
   SMS
   EMAIL
   HANDOFF
+  /// Link created for the office to copy and send by hand (their own phone, in person).
+  MANUAL
 }
 
 model ReviewLink {
@@ -343,6 +358,15 @@ model PayBlock {
   updatedById     String
   updatedBy       User      @relation(fields: [updatedById], references: [id])
   updatedAt       DateTime  @updatedAt
+}
+
+/// Failed sign-in counter per email and per address. lib/throttle.ts
+model LoginThrottle {
+  key            String    @id
+  failures       Int       @default(0)
+  firstFailureAt DateTime  @default(now())
+  lockedUntil    DateTime?
+  updatedAt      DateTime  @updatedAt
 }
 
 /// One-time login tokens from central.ecinc.us that have already been used (replay protection).

@@ -55,6 +55,14 @@ Recorded 2026-09-16 and 2026-09-17 with Charles Black. Each line is a decision t
 
 Until central.ecinc.us is defined, everyone signs in to ReviewMe directly. Admins create accounts on the Users page; each new account gets a temporary password shown once and must choose its own password at first sign-in. Admins can reset a password, change roles, and deactivate. The central handoff stays built and switches on when `CENTRAL_LOGIN_URL` is set.
 
+## Filing and links (2026-09-23)
+
+- A signed or declined review is closed by the office with **Close and file**; closing a period files all of them. A period closes only when every review is finished; an admin can reopen the last closed period.
+- Each employee has a review file: history on their page with per-review PDFs and one merged **Review file PDF**.
+- The office can send or resend the sign link once a review is approved, and can create a link to send by hand for workers with no phone or email. Any active link can be shown once; reveals are audited.
+- Staff login locks an email after 5 failures in 15 minutes and an address after 30, for 15 minutes.
+- Twilio and Microsoft 365 credentials are entered on the admin Settings page, encrypted at rest, and win over the environment. The mailbox is a shared mailbox.
+
 ## Not built yet
 
 Office edit of supervisor answers with attribution (audit table is ready), signed-PDF email to the worker after signing.

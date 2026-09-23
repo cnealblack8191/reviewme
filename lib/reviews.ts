@@ -100,6 +100,24 @@ export async function closeReview(reviewId: string, userId: string) {
   await setStatus(reviewId, "CLOSED", { userId, label: "office" }, { closedAt: new Date() });
 }
 
+export const TERMINAL_STATUSES: ReviewStatus[] = ["SIGNED", "DECLINED", "CLOSED"];
+
+/** Close a period: every review must be signed, declined or closed. Signed and declined reviews become CLOSED. */
+export async function closePeriod(periodId: string, userId: string) {
+  const open = await prisma.review.count({ where: { periodId, status: { notIn: TERMINAL_STATUSES } } });
+  if (open > 0) return { ok: false as const, open };
+  const finished = await prisma.review.findMany({ where: { periodId, status: { in: ["SIGNED", "DECLINED"] } }, select: { id: true } });
+  for (const r of finished) await closeReview(r.id, userId);
+  await prisma.reviewPeriod.update({ where: { id: periodId }, data: { closedAt: new Date() } });
+  await recordAudit({ actorUserId: userId, actorLabel: "office", action: "period.closed", newValue: periodId });
+  return { ok: true as const, closed: finished.length };
+}
+
+export async function reopenPeriod(periodId: string, userId: string) {
+  await prisma.reviewPeriod.update({ where: { id: periodId }, data: { closedAt: null } });
+  await recordAudit({ actorUserId: userId, actorLabel: "admin", action: "period.reopened", newValue: periodId });
+}
+
 /** Human labels for the office table and the foreman list. */
 export function describeStatus(review: { status: ReviewStatus; supervisorStatus: string; employeeStatus: string }) {
   switch (review.status) {
@@ -122,6 +140,6 @@ export function describeStatus(review: { status: ReviewStatus; supervisorStatus:
     case "DECLINED":
       return "Declined to sign";
     case "CLOSED":
-      return "Closed";
+      return "Filed";
   }
 }

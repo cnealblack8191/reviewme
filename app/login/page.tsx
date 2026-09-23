@@ -7,6 +7,7 @@ const errors: Record<string, string> = {
   "missing-credentials": "Enter both email and password.",
   "invalid-credentials": "That email and password were not recognized.",
   "use-central": "Office accounts sign in through ECI Central. Use the button above.",
+  "too-many-attempts": "Too many sign-in attempts. Wait 15 minutes and try again, or ask an admin to reset your password.",
   "central-failed": "ECI Central sign-in did not complete. Try again or use your password.",
   "central-no-account": "ECI Central signed you in, but there is no ReviewMe office account for that email. Ask an admin."
 };

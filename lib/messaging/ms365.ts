@@ -1,45 +1,27 @@
 /**
  * Email through Microsoft 365 with the Graph API, application permission
- * Mail.Send, authenticated by certificate (client credentials). Same approach
- * the ECI QC app uses. No SMTP, no extra dependency.
- *
+ * Mail.Send, client credentials. Two credential styles:
+ *   client secret        pasted on the Settings page or MICROSOFT_GRAPH_CLIENT_SECRET
+ *   certificate + key    PEM pasted on the Settings page, or file paths in the environment
  * Setup: docs/MS365_EMAIL.md
  */
 import { createHash, createSign, randomUUID, X509Certificate } from "node:crypto";
 import fs from "node:fs/promises";
+import { getGraphConfig, type GraphConfig } from "@/lib/messaging/config";
 
 const GRAPH_SCOPE = "https://graph.microsoft.com/.default";
 const ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
 
-let cachedToken: { value: string; expiresAt: number } | null = null;
-
-type GraphConfig = {
-  tenantId: string;
-  clientId: string;
-  sender: string;
-  certificatePath: string;
-  privateKeyPath: string;
-};
-
-function getConfig(): GraphConfig | null {
-  const tenantId = process.env.MICROSOFT_GRAPH_TENANT_ID;
-  const clientId = process.env.MICROSOFT_GRAPH_CLIENT_ID;
-  const sender = process.env.MICROSOFT_GRAPH_SENDER;
-  const certificatePath = process.env.MICROSOFT_GRAPH_CERTIFICATE_PATH;
-  const privateKeyPath = process.env.MICROSOFT_GRAPH_PRIVATE_KEY_PATH;
-  if (!tenantId || !clientId || !sender || !certificatePath || !privateKeyPath) return null;
-  return { tenantId, clientId, sender, certificatePath, privateKeyPath };
-}
+const tokenCache = new Map<string, { value: string; expiresAt: number }>();
 
 function b64(value: object) {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
 }
 
-async function clientAssertion(config: GraphConfig) {
-  const [certificatePem, privateKey] = await Promise.all([
-    fs.readFile(config.certificatePath, "utf8"),
-    fs.readFile(config.privateKeyPath, "utf8")
-  ]);
+async function certificateAssertion(config: GraphConfig) {
+  const certificatePem = config.certificatePem ?? (config.certificatePath ? await fs.readFile(config.certificatePath, "utf8") : null);
+  const privateKey = config.privateKeyPem ?? (config.privateKeyPath ? await fs.readFile(config.privateKeyPath, "utf8") : null);
+  if (!certificatePem || !privateKey) throw new Error("Microsoft Graph certificate or private key is missing.");
   const certificate = new X509Certificate(certificatePem);
   const now = Math.floor(Date.now() / 1000);
   const tokenUrl = `https://login.microsoftonline.com/${config.tenantId}/oauth2/v2.0/token`;
@@ -53,30 +35,35 @@ async function clientAssertion(config: GraphConfig) {
 }
 
 async function accessToken(config: GraphConfig) {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) return cachedToken.value;
+  const cacheKey = `${config.tenantId}:${config.clientId}:${config.clientSecret ? "secret" : "cert"}`;
+  const cached = tokenCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.value;
+
   const tokenUrl = `https://login.microsoftonline.com/${config.tenantId}/oauth2/v2.0/token`;
+  const params = new URLSearchParams({ client_id: config.clientId, scope: GRAPH_SCOPE, grant_type: "client_credentials" });
+  if (config.clientSecret) {
+    params.set("client_secret", config.clientSecret);
+  } else {
+    params.set("client_assertion_type", ASSERTION_TYPE);
+    params.set("client_assertion", await certificateAssertion(config));
+  }
+
   const response = await fetch(tokenUrl, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: config.clientId,
-      scope: GRAPH_SCOPE,
-      grant_type: "client_credentials",
-      client_assertion_type: ASSERTION_TYPE,
-      client_assertion: await clientAssertion(config)
-    }),
+    body: params,
     cache: "no-store"
   });
-  const result = (await response.json()) as { access_token?: string; expires_in?: number; error_description?: string };
+  const result = (await response.json().catch(() => ({}))) as { access_token?: string; expires_in?: number; error_description?: string };
   if (!response.ok || !result.access_token) {
     throw new Error(`Microsoft Graph authentication failed: ${result.error_description ?? response.statusText}`);
   }
-  cachedToken = { value: result.access_token, expiresAt: Date.now() + Math.max(60, result.expires_in ?? 3600) * 1000 };
+  tokenCache.set(cacheKey, { value: result.access_token, expiresAt: Date.now() + Math.max(60, result.expires_in ?? 3600) * 1000 });
   return result.access_token;
 }
 
 export async function sendEmail(to: string, subject: string, text: string, html?: string) {
-  const config = getConfig();
+  const config = await getGraphConfig();
   if (!config) {
     return { status: "skipped:ms365-not-configured" as const, providerId: undefined };
   }
@@ -98,6 +85,5 @@ export async function sendEmail(to: string, subject: string, text: string, html?
     const detail = await response.text();
     throw new Error(`Microsoft Graph sendMail failed (${response.status}): ${detail.slice(0, 300)}`);
   }
-  // Graph returns 202 with no body; the request id is the closest thing to a provider id.
   return { status: "sent" as const, providerId: response.headers.get("request-id") ?? undefined };
 }
