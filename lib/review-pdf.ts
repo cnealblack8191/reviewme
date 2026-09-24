@@ -11,6 +11,7 @@ import type { Language, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { describeStatus, averageRating } from "@/lib/reviews";
 import { scaleLabel } from "@/lib/i18n";
+import { translateMany } from "@/lib/translate";
 
 export type PdfAudience = "office" | "employee";
 
@@ -60,6 +61,37 @@ const LABELS = {
 } as const;
 
 type Labels = { [K in keyof (typeof LABELS)["EN"]]: string };
+
+const MT_LABEL = { EN: "Machine translation · original:", ES: "Traducción automática · original:" };
+
+/** Text plus, when a translation exists, the original beneath it in smaller grey type. */
+function bilingualLines(w: Writer, x: number, original: string, translated: string | null, lang: Language, size = 10, width?: number) {
+  const wdt = width ?? PAGE.w - PAGE.margin - x;
+  if (!translated) {
+    w.text(original || " ", x, size, { width: wdt });
+    return;
+  }
+  w.text(translated, x, size, { width: wdt });
+  w.text(`${MT_LABEL[lang]} ${original}`, x, size - 1.5, { width: wdt, color: MUTED });
+}
+
+type Translations = { questions: Array<string | null>; itemComments: Array<string | null>; overall: string | null; goals: string | null; employeeComments: string | null };
+
+/** Employee copy: supervisor text into the worker's language. Office copy: worker text into English. */
+async function loadTranslations(review: ReviewForPdf, audience: PdfAudience, lang: Language): Promise<Translations> {
+  const none: Translations = { questions: review.template.questions.map(() => null), itemComments: review.template.criteria.map(() => null), overall: null, goals: null, employeeComments: null };
+  const questionTexts = review.template.questions.map((q) => review.questionAnswers.find((a) => a.questionId === q.id)?.answer ?? "");
+  const itemTexts = review.template.criteria.map((c) => review.answers.find((a) => a.criterionId === c.id && a.side === "SUPERVISOR")?.comment ?? "");
+  if (audience === "employee" && lang === "ES") {
+    const [items, [overall, goals]] = await Promise.all([translateMany(itemTexts, "ES", "EN"), translateMany([review.overallComments, review.goals], "ES", "EN")]);
+    return { ...none, itemComments: items, overall, goals };
+  }
+  if (audience === "office" && review.language === "ES") {
+    const [questions, [employeeComments]] = await Promise.all([translateMany(questionTexts, "EN", "ES"), translateMany([review.employeeComments], "EN", "ES")]);
+    return { ...none, questions, employeeComments };
+  }
+  return none;
+}
 
 class Writer {
   page!: PDFPage;
@@ -194,17 +226,17 @@ function renderHeader(w: Writer, review: ReviewForPdf, L: Labels, lang: Language
   }
 }
 
-function renderSectionOne(w: Writer, review: ReviewForPdf, L: Labels, lang: Language) {
+function renderSectionOne(w: Writer, review: ReviewForPdf, L: Labels, lang: Language, tr: Translations) {
   w.heading(L.s1);
   review.template.questions.forEach((q, i) => {
-    const answer = review.questionAnswers.find((a) => a.questionId === q.id)?.answer ?? L.noAnswer;
+    const answer = review.questionAnswers.find((a) => a.questionId === q.id)?.answer ?? "";
     w.text(`${i + 1}. ${lang === "ES" ? q.textEs : q.textEn}`, PAGE.margin, 9.5, { bold: true });
-    w.text(answer, PAGE.margin + 14, 10, { color: INK });
+    bilingualLines(w, PAGE.margin + 14, answer || L.noAnswer, tr.questions[i], lang);
     w.gap(5);
   });
 }
 
-function renderSectionTwo(w: Writer, review: ReviewForPdf, L: Labels, lang: Language) {
+function renderSectionTwo(w: Writer, review: ReviewForPdf, L: Labels, lang: Language, tr: Translations) {
   w.heading(L.s2);
   w.text(L.key, PAGE.margin, 8.5, { color: MUTED });
   w.gap(4);
@@ -222,12 +254,13 @@ function renderSectionTwo(w: Writer, review: ReviewForPdf, L: Labels, lang: Lang
   };
   header();
 
-  for (const c of review.template.criteria) {
+  review.template.criteria.forEach((c, index) => {
     const mine = review.answers.find((a) => a.criterionId === c.id && a.side === "EMPLOYEE");
     const theirs = review.answers.find((a) => a.criterionId === c.id && a.side === "SUPERVISOR");
     const label = lang === "ES" ? c.labelEs : c.labelEn;
     const labelLines = w.wrap(label, w.font, 9, col.self - col.q - 8);
-    const commentLines = w.wrap(theirs?.comment ?? "", w.font, 8.5, col.end - col.com - 8);
+    const commentText = tr.itemComments[index] ? `${tr.itemComments[index]}  (${theirs?.comment ?? ""})` : theirs?.comment ?? "";
+    const commentLines = w.wrap(commentText, w.font, 8.5, col.end - col.com - 8);
     const h = Math.max(labelLines.length * 11, commentLines.length * 10.5, 14) + 6;
     if (w.y - h < PAGE.margin) {
       w.newPage();
@@ -240,14 +273,16 @@ function renderSectionTwo(w: Writer, review: ReviewForPdf, L: Labels, lang: Lang
     commentLines.forEach((line, i) => w.page.drawText(line, { x: col.com + 4, y: top - 10 - i * 10.5, size: 8.5, font: w.font }));
     w.y -= h;
     w.page.drawLine({ start: { x: col.q, y: w.y }, end: { x: col.end, y: w.y }, thickness: 0.5, color: LINE });
-  }
+  });
   w.gap(10);
 
   const avg = averageRating(review.template.criteria.map((c) => review.answers.find((a) => a.criterionId === c.id && a.side === "SUPERVISOR")?.rating));
   const overall = review.overallRating ? `${review.overallRating} · ${scaleLabel(lang, review.overallRating)}${avg ? `   (${L.average}: ${avg})` : ""}` : L.noAnswer;
-  w.box(L.overall, `${overall}\n${review.overallComments ?? ""}`.trim(), 3);
-  w.box(L.goals, review.goals ?? "", 3);
-  w.box(L.empComments, review.employeeComments ?? "", 3);
+  const withOriginal = (original: string | null | undefined, translated: string | null) =>
+    translated ? `${translated}\n${MT_LABEL[lang]} ${original ?? ""}` : original ?? "";
+  w.box(L.overall, `${overall}\n${withOriginal(review.overallComments, tr.overall)}`.trim(), 3);
+  w.box(L.goals, withOriginal(review.goals, tr.goals), 3);
+  w.box(L.empComments, withOriginal(review.employeeComments, tr.employeeComments), 3);
 }
 
 async function renderVerification(w: Writer, review: ReviewForPdf, L: Labels) {
@@ -319,9 +354,10 @@ function renderPayBlock(w: Writer, review: ReviewForPdf, L: Labels) {
 
 async function renderReview(w: Writer, review: ReviewForPdf, audience: PdfAudience, lang: Language) {
   const L = LABELS[lang];
+  const tr = await loadTranslations(review, audience, lang);
   renderHeader(w, review, L, lang);
-  renderSectionOne(w, review, L, lang);
-  renderSectionTwo(w, review, L, lang);
+  renderSectionOne(w, review, L, lang, tr);
+  renderSectionTwo(w, review, L, lang, tr);
   await renderVerification(w, review, L);
   if (audience === "office") renderPayBlock(w, review, L);
 }

@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { requireOffice } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { describeStatus } from "@/lib/reviews";
+import { bilingualMany } from "@/lib/translate";
+import { Translated } from "@/components/translated";
 import { OfficeShell } from "@/components/office-shell";
 import { addOfficeNoteAction, approveAction, closeReviewAction, createManualLinkAction, revealLinkAction, revealedUrl, sendBackAction, sendSelfLinkAction, sendSignLinkAction, savePayBlockAction } from "@/app/office/reviews/[reviewId]/actions";
 
@@ -31,6 +33,13 @@ export default async function OfficeReviewPage({ params, searchParams }: { param
   const answer = (criterionId: string, side: "EMPLOYEE" | "SUPERVISOR") => review.answers.find((a) => a.criterionId === criterionId && a.side === side);
   const pay = review.payBlock;
 
+  // Worker-typed text, translated to English for the office when the worker wrote in Spanish.
+  const questionTexts = review.template.questions.map((q) => review.questionAnswers.find((a) => a.questionId === q.id)?.answer ?? "");
+  const [questionAnswers, [employeeComments]] = await Promise.all([
+    bilingualMany(questionTexts, "EN", review.language === "ES" ? "ES" : undefined),
+    bilingualMany([review.employeeComments], "EN", review.language === "ES" ? "ES" : undefined)
+  ]);
+
   return (
     <OfficeShell user={user} active="/office">
       <div className="page-head">
@@ -58,8 +67,8 @@ export default async function OfficeReviewPage({ params, searchParams }: { param
             <table>
               <thead><tr><th>Section I · Self evaluation</th><th>Employee answer</th></tr></thead>
               <tbody>
-                {review.template.questions.map((q) => (
-                  <tr key={q.id}><td style={{ width: "45%" }}>{q.textEn}</td><td>{review.questionAnswers.find((a) => a.questionId === q.id)?.answer ?? <span style={{ color: "var(--muted)" }}>—</span>}</td></tr>
+                {review.template.questions.map((q, i) => (
+                  <tr key={q.id}><td style={{ width: "45%" }}>{q.textEn}</td><td><Translated value={questionAnswers[i]} lang="EN" /></td></tr>
                 ))}
               </tbody>
             </table>
@@ -78,7 +87,7 @@ export default async function OfficeReviewPage({ params, searchParams }: { param
                 ))}
                 <tr><td style={{ fontWeight: 600 }}>Overall rating</td><td></td><td style={{ textAlign: "center", fontWeight: 700 }}>{review.overallRating ?? "—"}</td><td style={{ color: "#4b5563" }}>{review.overallComments ?? ""}</td></tr>
                 <tr><td style={{ fontWeight: 600 }}>Goals for next review</td><td colSpan={3} style={{ color: "#4b5563" }}>{review.goals ?? ""}</td></tr>
-                <tr><td style={{ fontWeight: 600 }}>Employee comments</td><td colSpan={3} style={{ color: "#4b5563" }}>{review.employeeComments ?? ""}</td></tr>
+                <tr><td style={{ fontWeight: 600 }}>Employee comments</td><td colSpan={3} style={{ color: "#4b5563" }}><Translated value={employeeComments} lang="EN" empty="" /></td></tr>
               </tbody>
             </table>
           </section>

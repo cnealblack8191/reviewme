@@ -7,6 +7,7 @@ import { recordAudit } from "@/lib/audit";
 import { deliver } from "@/lib/messaging";
 import { encryptSecret } from "@/lib/secrets";
 import { sendSms } from "@/lib/messaging/twilio";
+import { testTranslator } from "@/lib/translate";
 
 function int(formData: FormData, key: string, fallback: number, min: number, max: number) {
   const value = Number(formData.get(key));
@@ -138,4 +139,44 @@ export async function sendTestSmsAction(formData: FormData) {
   }
   await prisma.messageLog.create({ data: { channel: "SMS", to, purpose: "test-sms", status, providerId, error } });
   redirect(`/office/settings?testsms=${encodeURIComponent(error ? `failed: ${error.slice(0, 120)}` : status)}`);
+}
+
+export async function saveTranslatorAction(formData: FormData) {
+  const user = await requireAdmin();
+  const key = text(formData, "translatorKey");
+  const region = text(formData, "translatorRegion").toLowerCase();
+  const endpoint = text(formData, "translatorEndpoint").replace(/\/$/, "");
+  if (endpoint && !/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(endpoint) && !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(endpoint)) {
+    redirect("/office/settings?error=Translator+endpoint+must+be+an+https+host");
+  }
+  await prisma.companySettings.update({
+    where: { id: "eci" },
+    data: {
+      translationEnabled: formData.get("translationEnabled") === "on",
+      translatorRegion: region || null,
+      translatorEndpoint: endpoint || null,
+      ...(key ? { translatorKeyEnc: encryptSecret(key) } : {})
+    }
+  });
+  await recordAudit({ actorUserId: user.id, actorLabel: "admin", action: "settings.translator", newValue: `${formData.get("translationEnabled") === "on" ? "on" : "off"}${key ? ", key updated" : ""}${region ? `, ${region}` : ""}` });
+  redirect("/office/settings?saved=1");
+}
+
+export async function clearTranslatorAction() {
+  const user = await requireAdmin();
+  await prisma.companySettings.update({ where: { id: "eci" }, data: { translatorKeyEnc: null, translatorRegion: null, translatorEndpoint: null } });
+  await recordAudit({ actorUserId: user.id, actorLabel: "admin", action: "settings.translator", newValue: "cleared" });
+  redirect("/office/settings?saved=1");
+}
+
+export async function testTranslatorAction() {
+  await requireAdmin();
+  try {
+    const result = await testTranslator();
+    redirect(`/office/settings?testtr=${encodeURIComponent(result.slice(0, 120))}`);
+  } catch (caught) {
+    if (caught && typeof caught === "object" && "digest" in caught) throw caught; // Next redirect
+    const message = caught instanceof Error ? caught.message : String(caught);
+    redirect(`/office/settings?testtr=${encodeURIComponent(`failed: ${message.slice(0, 120)}`)}`);
+  }
 }

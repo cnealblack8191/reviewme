@@ -42,7 +42,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
               {users.map((u) => (
                 <tr key={u.id} style={{ opacity: u.isActive ? 1 : 0.55 }}>
                   <td><strong>{u.name}</strong>{!u.isActive ? <small>Inactive</small> : u.mustChangePassword ? <small style={{ color: "var(--warn)" }}>Temporary password, not yet signed in</small> : null}</td>
-                  <td style={{ fontSize: 13 }}>{u.email}</td>
+                  <td style={{ fontSize: 13 }}>{u.email}<small>{u.language === "ES" ? "Español" : "English"}</small></td>
                   <td>
                     <form action={updateRolesAction} style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                       <input type="hidden" name="userId" value={u.id} />

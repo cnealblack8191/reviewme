@@ -4,6 +4,8 @@ import { requireReviewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isValidRating, submitSupervisorSide } from "@/lib/reviews";
 import type { SupervisorDraft } from "@/lib/supervisor-draft";
+import { pick, rt } from "@/lib/i18n";
+import { userLanguage } from "@/lib/user-language";
 
 async function loadOwnedReview(reviewId: string, userId: string) {
   const review = await prisma.review.findUnique({
@@ -57,12 +59,13 @@ export async function submitSupervisorDraft(reviewId: string, draft: SupervisorD
   if (!review) return { ok: false, missing: ["This review is no longer open on your side"] };
   await persist(review, draft);
 
+  const lang = await userLanguage(user.id);
   const missing: string[] = [];
   for (const c of review.template.criteria) {
     const r = draft.answers?.[c.id]?.rating;
-    if (typeof r !== "number" || !isValidRating(r)) missing.push(c.labelEn);
+    if (typeof r !== "number" || !isValidRating(r)) missing.push(pick(lang, c));
   }
-  if (typeof draft.overallRating !== "number" || !isValidRating(draft.overallRating)) missing.push("Overall rating");
+  if (typeof draft.overallRating !== "number" || !isValidRating(draft.overallRating)) missing.push(rt(lang, "overallRating"));
   if (missing.length) return { ok: false, missing };
 
   await submitSupervisorSide(review.id, user.id);

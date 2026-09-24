@@ -32,3 +32,12 @@ export async function markDiscussedAction(formData: FormData) {
 
   revalidatePath("/me");
 }
+
+
+/** Reviewer picks their screen language. Stored on the account so every device follows. */
+export async function setLanguageAction(formData: FormData) {
+  const user = await requireReviewer();
+  const lang = String(formData.get("lang")) === "ES" ? "ES" : "EN";
+  await prisma.user.update({ where: { id: user.id }, data: { language: lang } });
+  revalidatePath("/me");
+}

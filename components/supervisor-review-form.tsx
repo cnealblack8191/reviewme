@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SupervisorDraft } from "@/lib/supervisor-draft";
+import type { ReviewerLabels } from "@/lib/i18n";
 import { saveSupervisorDraft, submitSupervisorDraft } from "@/app/me/review/[reviewId]/actions";
 
-type Criterion = { id: string; label: string };
+type Criterion = { id: string; label: string; workerRating?: number | null };
 type SyncState = "synced" | "pending" | "offline" | "error" | "saving";
 
 const STORAGE_PREFIX = "reviewme:draft:";
@@ -44,13 +45,15 @@ export function SupervisorReviewForm({
   criteria,
   initial,
   serverUpdatedAt,
-  locked
+  locked,
+  labels: L
 }: {
   reviewId: string;
   criteria: Criterion[];
   initial: SupervisorDraft;
   serverUpdatedAt: number;
   locked: boolean;
+  labels: ReviewerLabels;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<SupervisorDraft>(initial);
@@ -156,11 +159,11 @@ export function SupervisorReviewForm({
   };
 
   const banner = {
-    synced: { text: lastSynced ? `Synced ${new Date(lastSynced).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "Synced", color: "var(--ok)", bg: "var(--ok-soft)" },
-    saving: { text: "Saving…", color: "var(--muted)", bg: "#eef0f2" },
-    pending: { text: "Saved on phone · syncing", color: "var(--warn)", bg: "var(--warn-soft)" },
-    offline: { text: "No signal · saved on this phone, will sync when back online", color: "var(--warn)", bg: "var(--warn-soft)" },
-    error: { text: "Saved on phone · server unreachable, will retry", color: "var(--danger)", bg: "var(--danger-soft)" }
+    synced: { text: lastSynced ? `${L.synced} ${new Date(lastSynced).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : L.synced, color: "var(--ok)", bg: "var(--ok-soft)" },
+    saving: { text: L.saving, color: "var(--muted)", bg: "#eef0f2" },
+    pending: { text: L.pending, color: "var(--warn)", bg: "var(--warn-soft)" },
+    offline: { text: L.offline, color: "var(--warn)", bg: "var(--warn-soft)" },
+    error: { text: L.syncError, color: "var(--danger)", bg: "var(--danger-soft)" }
   }[sync];
 
   return (
@@ -172,13 +175,13 @@ export function SupervisorReviewForm({
         </div>
       ) : null}
 
-      <div className="card" style={{ fontSize: 12, color: "var(--muted)" }}>Section II · Evaluation. 1 Unsatisfactory · 2 Fair · 3 Good · 4 Excellent</div>
+      <div className="card" style={{ fontSize: 12, color: "var(--muted)" }}>{L.sectionTwo}. {L.scaleKey}</div>
 
       {criteria.map((c) => {
         const answer = draft.answers[c.id];
         return (
           <fieldset className="card" key={c.id} disabled={locked} style={{ border: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 10 }}>
-            <legend style={{ fontSize: 14, fontWeight: 600, padding: "0 4px" }}>{c.label}</legend>
+            <legend style={{ fontSize: 14, fontWeight: 600, padding: "0 4px" }}>{c.label}{typeof c.workerRating === "number" ? <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: "var(--info)" }}>· {L.workerRated} {c.workerRating}</span> : null}</legend>
             <div className="scale">
               {[1, 2, 3, 4].map((n) => (
                 <label key={n}>
@@ -191,7 +194,7 @@ export function SupervisorReviewForm({
             <input
               value={answer?.comment ?? ""}
               onChange={(e) => setAnswer(c.id, { comment: e.target.value })}
-              placeholder="Supervisor comment"
+              placeholder={L.supervisorComment}
               style={{ height: 40, border: "1px solid var(--line-strong)", borderRadius: 10, padding: "0 12px", fontSize: 14, width: "100%" }}
             />
           </fieldset>
@@ -199,7 +202,7 @@ export function SupervisorReviewForm({
       })}
 
       <fieldset className="card" disabled={locked} style={{ border: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 12 }}>
-        <legend style={{ fontSize: 14, fontWeight: 600, padding: "0 4px" }}>Overall evaluation rating{average ? ` · your items average ${average}` : ""}</legend>
+        <legend style={{ fontSize: 14, fontWeight: 600, padding: "0 4px" }}>{L.overallRating}{average ? ` · ${L.itemsAverage} ${average}` : ""}</legend>
         <div className="scale">
           {[1, 2, 3, 4].map((n) => (
             <label key={n}>
@@ -209,18 +212,18 @@ export function SupervisorReviewForm({
             </label>
           ))}
         </div>
-        <label className="field"><span>Overall comments</span><textarea value={draft.overallComments} onChange={(e) => update({ overallComments: e.target.value })} /></label>
-        <label className="field"><span>Recommended goals for next review</span><textarea value={draft.goals} onChange={(e) => update({ goals: e.target.value })} /></label>
+        <label className="field"><span>{L.overallComments}</span><textarea value={draft.overallComments} onChange={(e) => update({ overallComments: e.target.value })} /></label>
+        <label className="field"><span>{L.goals}</span><textarea value={draft.goals} onChange={(e) => update({ goals: e.target.value })} /></label>
       </fieldset>
 
-      {missing.length ? <div className="card error">Still needed: {missing.join(", ")}</div> : null}
+      {missing.length ? <div className="card error">{L.stillNeeded}: {missing.join(", ")}</div> : null}
 
       {!locked ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <button className="btn btn-primary btn-lg" type="button" onClick={submit} disabled={submitting || sync === "offline"}>
-            {sync === "offline" ? "Submit needs signal" : submitting ? "Submitting…" : "Submit to office"}
+            {sync === "offline" ? L.submitNeedsSignal : submitting ? L.submitting : L.submitOffice}
           </button>
-          <small style={{ color: "var(--muted)", textAlign: "center" }}>Every change is saved on this phone and synced when there is signal. Submitting locks your side.</small>
+          <small style={{ color: "var(--muted)", textAlign: "center" }}>{L.saveHint}</small>
         </div>
       ) : null}
     </div>

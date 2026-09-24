@@ -94,3 +94,78 @@ export function pick<T extends { labelEn?: string; labelEs?: string; textEn?: st
   if (lang === "ES") return row.labelEs ?? row.textEs ?? row.titleEs ?? "";
   return row.labelEn ?? row.textEn ?? row.titleEn ?? "";
 }
+
+
+/** Strings for reviewers (foremen, managers) on the phone. */
+const reviewerStrings = {
+  myReviews: { EN: "My reviews", ES: "Mis evaluaciones" },
+  noOpenPeriod: { EN: "No open review period", ES: "No hay periodo de evaluación abierto" },
+  due: { EN: "due", ES: "vence" },
+  needAttention: { EN: "Need attention", ES: "Pendientes" },
+  completed: { EN: "Completed", ES: "Completadas" },
+  sentToOffice: { EN: "sent to the office", ES: "enviadas a la oficina" },
+  yourReviews: { EN: "Your reviews", ES: "Sus evaluaciones" },
+  nothingWaiting: { EN: "Nothing waiting on you.", ES: "No tiene nada pendiente." },
+  notStarted: { EN: "Not started", ES: "Sin empezar" },
+  inProgress: { EN: "In progress", ES: "En curso" },
+  items: { EN: "items", ES: "puntos" },
+  sentBack: { EN: "Sent back", ES: "Devuelta" },
+  start: { EN: "Start", ES: "Empezar" },
+  continue: { EN: "Continue", ES: "Continuar" },
+  approvedMeet: { EN: "Approved · meet and confirm", ES: "Aprobada · reunirse y confirmar" },
+  approvedBy: { EN: "Approved by office", ES: "Aprobada por la oficina" },
+  sitDown: { EN: "Sit down with them, then tap. That sends the sign link.", ES: "Reúnase con la persona y luego toque. Eso envía el enlace para firmar." },
+  discussed: { EN: "Discussed", ES: "Conversado" },
+  handoffLink: { EN: "Worker can't get their link? Hand them your phone", ES: "¿El trabajador no recibe su enlace? Preste su teléfono" },
+  office: { EN: "Office", ES: "Oficina" },
+  password: { EN: "Password", ES: "Contraseña" },
+  signOut: { EN: "Sign out", ES: "Salir" },
+  back: { EN: "Back", ES: "Volver" },
+  sentBackBy: { EN: "Sent back by the office", ES: "Devuelta por la oficina" },
+  submittedOn: { EN: "Submitted", ES: "Enviada" },
+  officeHasIt: { EN: "The office has it.", ES: "La oficina la tiene." },
+  sectionTwo: { EN: "Section II · Evaluation", ES: "Sección II · Evaluación" },
+  scaleKey: { EN: "1 Unsatisfactory · 2 Fair · 3 Good · 4 Excellent", ES: "1 Insatisfactorio · 2 Regular · 3 Bueno · 4 Excelente" },
+  supervisorComment: { EN: "Supervisor comment", ES: "Comentario del supervisor" },
+  overallRating: { EN: "Overall evaluation rating", ES: "Calificación general" },
+  itemsAverage: { EN: "your items average", ES: "promedio de sus puntos" },
+  overallComments: { EN: "Overall comments", ES: "Comentarios generales" },
+  goals: { EN: "Recommended goals for next review", ES: "Metas recomendadas para la próxima evaluación" },
+  stillNeeded: { EN: "Still needed", ES: "Falta" },
+  submitOffice: { EN: "Submit to office", ES: "Enviar a la oficina" },
+  submitNeedsSignal: { EN: "Submit needs signal", ES: "Para enviar se necesita señal" },
+  submitting: { EN: "Submitting…", ES: "Enviando…" },
+  saveHint: { EN: "Every change is saved on this phone and synced when there is signal. Submitting locks your side.", ES: "Cada cambio se guarda en este teléfono y se sincroniza cuando hay señal. Al enviar, su parte queda bloqueada." },
+  synced: { EN: "Synced", ES: "Sincronizado" },
+  saving: { EN: "Saving…", ES: "Guardando…" },
+  pending: { EN: "Saved on phone · syncing", ES: "Guardado en el teléfono · sincronizando" },
+  offline: { EN: "No signal · saved on this phone, will sync when back online", ES: "Sin señal · guardado en este teléfono, se sincronizará al volver la conexión" },
+  syncError: { EN: "Saved on phone · server unreachable, will retry", ES: "Guardado en el teléfono · servidor no disponible, se reintentará" },
+  workerSelfEval: { EN: "Worker's self-evaluation", ES: "Autoevaluación del trabajador" },
+  workerNotSubmitted: { EN: "Not submitted yet.", ES: "Todavía no la ha enviado." },
+  workerRated: { EN: "rated themselves", ES: "se calificó" },
+  handoffTitle: { EN: "Hand your phone to a worker", ES: "Preste su teléfono a un trabajador" },
+  lastResort: { EN: "LAST RESORT", ES: "ÚLTIMO RECURSO" },
+  handoffIntro: { EN: "Only when the text or email link can't reach them. The office can resend a link first, so try that before this.", ES: "Solo cuando el enlace por texto o correo no le llega. La oficina puede reenviar un enlace primero; intente eso antes." },
+  whoCompleting: { EN: "Who is completing their self-evaluation?", ES: "¿Quién va a completar su autoevaluación?" },
+  chooseWorker: { EN: "Choose a worker", ES: "Elija un trabajador" },
+  onlyWaiting: { EN: "Only crew still waiting on their part are listed.", ES: "Solo aparecen quienes aún no han hecho su parte." },
+  handoffSteps: {
+    EN: "You are signed out of the portal on this phone.|The worker confirms the last 4 digits of their phone number.|They complete the same one-time self-evaluation the link opens. Your review is never shown.|On submit the session ends and any pending link dies.",
+    ES: "Su sesión en este teléfono se cierra.|El trabajador confirma los últimos 4 dígitos de su teléfono.|Completa la misma autoevaluación de un solo uso que abre el enlace. Su evaluación nunca se muestra.|Al enviar, la sesión termina y cualquier enlace pendiente deja de funcionar."
+  },
+  signOutHandOver: { EN: "Sign out and hand over", ES: "Cerrar sesión y prestar" },
+  neverMind: { EN: "Never mind", ES: "Cancelar" }
+} as const;
+
+export type ReviewerKey = keyof typeof reviewerStrings;
+
+export function rt(lang: Language, key: ReviewerKey) {
+  return reviewerStrings[key][lang];
+}
+
+export type ReviewerLabels = { [K in ReviewerKey]: string };
+
+export function reviewerLabels(lang: Language): ReviewerLabels {
+  return Object.fromEntries(Object.keys(reviewerStrings).map((k) => [k, rt(lang, k as ReviewerKey)])) as ReviewerLabels;
+}

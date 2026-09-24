@@ -61,6 +61,12 @@ model CompanySettings {
   graphCertificatePemEnc String?
   graphPrivateKeyPemEnc  String?
 
+  // Azure AI Translator for typed text (answers, comments, goals). Fixed form text is stored bilingual already.
+  translationEnabled Boolean @default(true)
+  translatorKeyEnc   String?
+  translatorRegion   String?
+  translatorEndpoint String?
+
   updatedAt DateTime @updatedAt
 }
 
@@ -71,6 +77,8 @@ model User {
   passwordHash       String
   /// Set when an admin issues a temporary password; the next sign-in must change it.
   mustChangePassword Boolean  @default(false)
+  /// Screen language for reviewers on the phone. The office desktop stays English.
+  language           Language @default(EN)
   roles              Role[]
   isActive           Boolean  @default(true)
   createdAt          DateTime @default(now())
@@ -358,6 +366,19 @@ model PayBlock {
   updatedById     String
   updatedBy       User      @relation(fields: [updatedById], references: [id])
   updatedAt       DateTime  @updatedAt
+}
+
+/// Machine translations of typed text, cached so a sentence is translated once. lib/translate.ts
+model Translation {
+  id             String   @id @default(cuid())
+  /// sha256 of `${from}|${to}|${text}`
+  key            String   @unique
+  sourceLang     String
+  targetLang     String
+  sourceText     String
+  translatedText String
+  provider       String
+  createdAt      DateTime @default(now())
 }
 
 /// Failed sign-in counter per email and per address. lib/throttle.ts

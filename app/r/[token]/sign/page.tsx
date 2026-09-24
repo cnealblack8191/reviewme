@@ -4,6 +4,8 @@ import { SignaturePad } from "@/components/signature-pad";
 import { loadWorkerLink } from "@/lib/worker-link";
 import { pick, scaleLabel, t } from "@/lib/i18n";
 import { declineAction, signAction } from "@/app/r/[token]/actions";
+import { bilingualMany } from "@/lib/translate";
+import { Translated } from "@/components/translated";
 
 export default async function SignPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ lang?: string; error?: string }> }) {
   const { token } = await params;
@@ -13,6 +15,11 @@ export default async function SignPage({ params, searchParams }: { params: Promi
 
   const review = link.review;
   const answer = (criterionId: string, side: "EMPLOYEE" | "SUPERVISOR") => review.answers.find((a) => a.criterionId === criterionId && a.side === side)?.rating;
+  const itemComment = (criterionId: string) => review.answers.find((a) => a.criterionId === criterionId && a.side === "SUPERVISOR")?.comment ?? "";
+
+  // Supervisor-typed text shown in the worker's chosen language; supervisors write in English.
+  const [overallComments, goals] = await bilingualMany([review.overallComments, review.goals], lang, "EN");
+  const itemComments = await bilingualMany(review.template.criteria.map((c) => itemComment(c.id)), lang, "EN");
 
   return (
     <div className="phone">
@@ -26,14 +33,17 @@ export default async function SignPage({ params, searchParams }: { params: Promi
 
         <section className="table-card">
           <div className="compare head"><span>{pick(lang, review.template)}</span><span className="num">{t(lang, "you")}</span><span className="num">{t(lang, "supervisor")}</span></div>
-          {review.template.criteria.map((c) => {
+          {review.template.criteria.map((c, i) => {
             const mine = answer(c.id, "EMPLOYEE");
             const theirs = answer(c.id, "SUPERVISOR");
             return (
-              <div className="compare" key={c.id}>
-                <span>{pick(lang, c)}</span>
-                <span className="num">{mine ?? "—"}</span>
-                <span className="num" style={{ color: theirs != null && mine != null && theirs < mine ? "var(--danger)" : undefined }}>{theirs ?? "—"}</span>
+              <div key={c.id}>
+                <div className="compare" style={{ borderBottom: itemComments[i].original ? 0 : undefined }}>
+                  <span>{pick(lang, c)}</span>
+                  <span className="num">{mine ?? "—"}</span>
+                  <span className="num" style={{ color: theirs != null && mine != null && theirs < mine ? "var(--danger)" : undefined }}>{theirs ?? "—"}</span>
+                </div>
+                {itemComments[i].original ? <div style={{ padding: "0 14px 10px 14px", borderBottom: "1px solid #f1f3f5", fontSize: 13, color: "#4b5563" }}><Translated value={itemComments[i]} lang={lang} size={13} /></div> : null}
               </div>
             );
           })}
@@ -42,8 +52,8 @@ export default async function SignPage({ params, searchParams }: { params: Promi
             <span className="num" style={{ fontWeight: 700 }}>{review.overallRating ?? "—"}{review.overallRating ? ` · ${scaleLabel(lang, review.overallRating)}` : ""}</span>
           </div>
           <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
-            <div><div className="group-title" style={{ padding: 0 }}><span>{t(lang, "supervisorComments")}</span></div><div style={{ fontSize: 14, lineHeight: 1.5 }}>{review.overallComments ?? "—"}</div></div>
-            <div><div className="group-title" style={{ padding: 0 }}><span>{t(lang, "goals")}</span></div><div style={{ fontSize: 14, lineHeight: 1.5 }}>{review.goals ?? "—"}</div></div>
+            <div><div className="group-title" style={{ padding: 0 }}><span>{t(lang, "supervisorComments")}</span></div><div style={{ fontSize: 14, lineHeight: 1.5 }}><Translated value={overallComments} lang={lang} /></div></div>
+            <div><div className="group-title" style={{ padding: 0 }}><span>{t(lang, "goals")}</span></div><div style={{ fontSize: 14, lineHeight: 1.5 }}><Translated value={goals} lang={lang} /></div></div>
             {review.discussedAt ? <div style={{ fontSize: 13, color: "var(--ok)", fontWeight: 600 }}>✓ {lang === "ES" ? "Conversado con" : "Discussed with"} {review.supervisor.name} · {review.discussedAt.toLocaleDateString()}</div> : null}
           </div>
         </section>

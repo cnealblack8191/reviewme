@@ -63,6 +63,11 @@ Until central.ecinc.us is defined, everyone signs in to ReviewMe directly. Admin
 - Staff login locks an email after 5 failures in 15 minutes and an address after 30, for 15 minutes.
 - Twilio and Microsoft 365 credentials are entered on the admin Settings page, encrypted at rest, and win over the environment. The mailbox is a shared mailbox.
 
+## Translation (2026-09-24)
+
+- Fixed text is stored in both languages. Reviewers choose EN or ES on the phone; the choice is saved on their account. The office desktop stays English.
+- Typed text is machine translated with Azure AI Translator, key entered on the Settings page, cached per sentence, original always shown beneath the translation with a Machine translated label. Off or unconfigured means originals only.
+
 ## Not built yet
 
 Office edit of supervisor answers with attribution (audit table is ready), signed-PDF email to the worker after signing.

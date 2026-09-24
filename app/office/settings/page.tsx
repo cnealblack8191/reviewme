@@ -1,8 +1,9 @@
 import { requireAdmin } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { OfficeShell } from "@/components/office-shell";
-import { clearGraphAction, clearTwilioAction, saveGraphAction, saveSettingsAction, saveTwilioAction, sendTestEmailAction, sendTestSmsAction } from "@/app/office/settings/actions";
+import { clearGraphAction, clearTranslatorAction, clearTwilioAction, saveGraphAction, saveSettingsAction, saveTranslatorAction, saveTwilioAction, sendTestEmailAction, sendTestSmsAction, testTranslatorAction } from "@/app/office/settings/actions";
 import { getGraphConfig, getTwilioConfig } from "@/lib/messaging/config";
+import { getTranslatorConfig } from "@/lib/translate";
 import { decryptSecret, maskTail } from "@/lib/secrets";
 
 const TIMEZONES = ["America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles"];
@@ -19,12 +20,13 @@ function Status({ ready, source }: { ready: boolean; source?: string }) {
   return <span className={ready ? "chip chip-ok" : "chip chip-warn"}>{ready ? `Configured · ${source}` : "Not configured"}</span>;
 }
 
-export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ saved?: string; test?: string; testsms?: string; error?: string }> }) {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ saved?: string; test?: string; testsms?: string; testtr?: string; error?: string }> }) {
   const user = await requireAdmin();
   const sp = await searchParams;
   const s = await getSettings();
   const twilio = await getTwilioConfig();
   const graph = await getGraphConfig();
+  const translator = await getTranslatorConfig();
   const centralReady = configured(["CENTRAL_LOGIN_URL"]) && (configured(["CENTRAL_LOGIN_SECRET"]) || configured(["CENTRAL_LOGIN_PUBLIC_KEY"]));
   const graphMode = s.graphClientSecretEnc ? "secret" : s.graphCertificatePemEnc ? "certificate" : "secret";
 
@@ -39,6 +41,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       {sp.saved ? <p style={{ color: "var(--ok)", fontWeight: 600 }}>Saved.</p> : null}
       {sp.test ? <p style={{ color: sp.test === "sent" ? "var(--ok)" : "var(--warn)", fontWeight: 600 }}>Test email: {sp.test}</p> : null}
       {sp.testsms ? <p style={{ color: sp.testsms === "sent" ? "var(--ok)" : "var(--warn)", fontWeight: 600 }}>Test text: {sp.testsms}</p> : null}
+      {sp.testtr ? <p style={{ color: sp.testtr.startsWith("failed") ? "var(--warn)" : "var(--ok)", fontWeight: 600 }}>Translator test: {sp.testtr}</p> : null}
       {sp.error ? <p className="error">{sp.error}</p> : null}
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 620px) minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
@@ -128,6 +131,28 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <button className="btn btn-outline" type="submit" style={{ height: 34 }}>Send a test email to {user.email}</button>
             </form>
             <small style={{ color: "var(--muted)" }}>The app registration needs Mail.Send with admin consent. Steps: docs/MS365_EMAIL.md.</small>
+          </section>
+
+          <section className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontWeight: 700 }}>Translation of typed text</div>
+              <Status ready={Boolean(translator)} source={translator?.source} />
+            </div>
+            <small style={{ color: "var(--muted)" }}>Azure AI Translator. Translates what people type: self-evaluation answers, supervisor comments, goals, worker comments. Form questions and screen text are already stored in both languages. Originals are always kept and shown.</small>
+            <form action={saveTranslatorAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <label className="field" style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <input type="checkbox" name="translationEnabled" defaultChecked={s.translationEnabled} style={{ width: 16, height: 16 }} /> Translate typed text when a key is on file
+              </label>
+              <label className="field"><span>Key <span className="hint">· {s.translatorKeyEnc ? "on file, leave blank to keep" : "from the Azure resource, Keys and Endpoint"}</span></span><input name="translatorKey" type="password" autoComplete="new-password" placeholder={s.translatorKeyEnc ? "••••••••" : ""} /></label>
+              <label className="field"><span>Region <span className="hint">· for example eastus</span></span><input name="translatorRegion" defaultValue={s.translatorRegion ?? ""} placeholder="eastus" /></label>
+              <label className="field"><span>Endpoint <span className="hint">· leave blank for the global endpoint</span></span><input name="translatorEndpoint" defaultValue={s.translatorEndpoint ?? ""} placeholder="https://api.cognitive.microsofttranslator.com" /></label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn btn-primary" type="submit" style={{ height: 34 }}>Save translator</button>
+                {s.translatorKeyEnc ? <button className="btn btn-ghost" type="submit" formAction={clearTranslatorAction} style={{ height: 34 }}>Clear</button> : null}
+              </div>
+            </form>
+            <form action={testTranslatorAction}><button className="btn btn-outline" type="submit" style={{ height: 34 }}>Translate a test sentence to Spanish</button></form>
+            <small style={{ color: "var(--muted)" }}>Setup: docs/TRANSLATION.md. Free tier covers two million characters a month.</small>
           </section>
 
           <section className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>

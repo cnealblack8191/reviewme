@@ -44,7 +44,9 @@ npm run reminders:run     # daily, from cron, needs CRON_SECRET and APP_BASE_URL
 | `lib/messaging/` | Twilio SMS and Microsoft 365 (Graph) email adapters |
 | `lib/review-pdf.ts` | Office and employee PDFs, merged export by reviewer or company |
 | `lib/reminders.ts` | Daily reminder job, called by `/api/cron/reminders` |
-| `lib/i18n.ts` | Worker-facing strings, `en` and `es` |
+| `lib/i18n.ts` | Worker and reviewer strings, `EN` and `ES` |
+| `lib/translate.ts` | Azure AI Translator client with cache for typed text |
+| `docs/TRANSLATION.md` | How both layers of translation work and how to set up Azure |
 | `app/me` | Foreman phone home |
 | `app/office` | Office desktop, including Users and Settings for admins |
 | `app/account/password` | Change password, forced after a temporary password |
