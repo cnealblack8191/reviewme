@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
 import { verifySecret } from "@/lib/password";
 import { recordAudit } from "@/lib/audit";
+import { appBaseUrl, sessionSecret } from "@/lib/env";
 
 export function hashToken(token: string) {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -19,7 +20,7 @@ export function hashToken(token: string) {
 // The hash finds a link; the ciphertext lets a reminder resend the same URL.
 
 function tokenKey() {
-  const secret = process.env.SESSION_SECRET ?? "local-dev-session-secret";
+  const secret = sessionSecret();
   return crypto.createHash("sha256").update(`${secret}:review-links`).digest();
 }
 
@@ -42,8 +43,7 @@ export function decryptToken(ciphertext: string): string | null {
 }
 
 export function linkUrl(token: string) {
-  const base = (process.env.APP_BASE_URL ?? "http://127.0.0.1:3010").replace(/\/$/, "");
-  return `${base}/r/${token}`;
+  return `${appBaseUrl()}/r/${token}`;
 }
 
 export async function issueLink(input: {
@@ -127,6 +127,14 @@ export async function checkIdentity(linkId: string, digits: string) {
   });
   if (!link || link.lockedAt || link.usedAt || link.voidedAt) return { ok: false, locked: Boolean(link?.lockedAt) };
 
+  // Spend an attempt before comparing, in one conditional update, so parallel
+  // guesses cannot get past linkMaxAttempts by all reading the same count.
+  const reserved = await prisma.reviewLink.updateMany({
+    where: { id: linkId, lockedAt: null, attempts: { lt: settings.linkMaxAttempts } },
+    data: { attempts: { increment: 1 } }
+  });
+  if (reserved.count === 0) return { ok: false, locked: true };
+
   const cleaned = digits.replace(/\D/g, "");
   const employee = link.review.employee;
   let matches = false;
@@ -141,14 +149,11 @@ export async function checkIdentity(linkId: string, digits: string) {
     return { ok: true, locked: false };
   }
 
-  const attempts = link.attempts + 1;
+  const { attempts } = await prisma.reviewLink.findUniqueOrThrow({ where: { id: linkId }, select: { attempts: true } });
   const locked = attempts >= settings.linkMaxAttempts;
-  await prisma.reviewLink.update({
-    where: { id: linkId },
-    data: { attempts, lockedAt: locked ? new Date() : undefined }
-  });
   if (locked) {
-    await recordAudit({ reviewId: link.reviewId, actorLabel: "worker", action: "link.locked", newValue: `${attempts} failed identity checks` });
+    const lockedNow = await prisma.reviewLink.updateMany({ where: { id: linkId, lockedAt: null }, data: { lockedAt: new Date() } });
+    if (lockedNow.count) await recordAudit({ reviewId: link.reviewId, actorLabel: "worker", action: "link.locked", newValue: `${attempts} failed identity checks` });
   }
   return { ok: false, locked };
 }
@@ -162,7 +167,7 @@ export async function markLinkUsed(linkId: string) {
 const LINK_COOKIE_PREFIX = "eci-review-link-";
 
 function signLink(linkId: string) {
-  const secret = process.env.SESSION_SECRET ?? "local-dev-session-secret";
+  const secret = sessionSecret();
   return crypto.createHmac("sha256", secret).update(`link:${linkId}`).digest("hex");
 }
 

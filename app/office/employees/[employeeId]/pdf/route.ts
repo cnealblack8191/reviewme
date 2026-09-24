@@ -7,7 +7,7 @@ import { recordAudit } from "@/lib/audit";
 /** The employee's whole review file as one PDF. */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ employeeId: string }> }) {
   const user = await getCurrentUser();
-  if (!user || !isOffice(user)) return new Response("Forbidden", { status: 403 });
+  if (!user || !isOffice(user) || user.mustChangePassword) return new Response("Forbidden", { status: 403 });
   const { employeeId } = await params;
   const result = await buildEmployeeFilePdf(employeeId);
   if (!result) return new Response("Not found", { status: 404 });

@@ -51,6 +51,11 @@ export async function clearLoginFailures(email: string) {
   await prisma.loginThrottle.deleteMany({ where: { key: keys(email, "").email } });
 }
 
+/**
+ * The client address as Apache saw it. Apache appends the connecting address to
+ * X-Forwarded-For, so the last entry is the real one; earlier entries come from
+ * the client and can be forged.
+ */
 export function clientAddress(headers: Headers) {
-  return headers.get("x-forwarded-for")?.split(",")[0].trim() || headers.get("x-real-ip") || "unknown";
+  return headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() || headers.get("x-real-ip") || "unknown";
 }

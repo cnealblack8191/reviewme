@@ -23,7 +23,7 @@ App Router, Prisma, Postgres, deployed on the same EC2 host behind Apache.
 cp .env.example .env      # fill DATABASE_URL, SESSION_SECRET, SEED_ADMIN_PASSWORD
 npm install
 npm run db:generate
-npm run db:push
+npm run db:migrate       # applies prisma/migrations to your local database
 npm run db:seed           # eight ECI form templates + admin account
 npm run dev               # http://127.0.0.1:3010
 npm run reminders:run     # daily, from cron, needs CRON_SECRET and APP_BASE_URL
@@ -49,6 +49,7 @@ npm run reminders:run     # daily, from cron, needs CRON_SECRET and APP_BASE_URL
 | `app/office` | Office desktop, including Users and Settings for admins |
 | `app/account/password` | Change password, forced after a temporary password |
 | `app/r/[token]` | Worker link: verify, self-evaluation, sign, done |
+| `docs/DEPLOY.md` | EC2, Apache, PM2, migrations, first admin |
 | `docs/DECISIONS.md` | Every product decision made so far |
 | `docs/MS365_EMAIL.md` | Microsoft 365 mail setup |
 | `docs/CENTRAL_LOGIN.md` | What central.ecinc.us must send to sign office staff in |

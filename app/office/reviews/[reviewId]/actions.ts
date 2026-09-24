@@ -28,6 +28,8 @@ export async function sendBackAction(formData: FormData) {
   const reviewId = reviewIdFrom(formData);
   const reason = String(formData.get("reason") ?? "").trim();
   if (!reason) return;
+  const review = await prisma.review.findUnique({ where: { id: reviewId }, select: { status: true } });
+  if (review?.status !== "PENDING_OFFICE") return;
   await sendBackReview(reviewId, user.id, reason);
   revalidatePath(`/office/reviews/${reviewId}`);
   revalidatePath("/office");

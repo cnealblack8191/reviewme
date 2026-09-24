@@ -2,6 +2,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getCurrentUser, homeFor } from "@/lib/auth";
 import { centralLoginConfig, centralLoginStartUrl } from "@/lib/central-login";
+import { appBaseUrl } from "@/lib/env";
 
 const errors: Record<string, string> = {
   "missing-credentials": "Enter both email and password.",
@@ -19,7 +20,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const params = await searchParams;
   const message = params.error ? errors[params.error] : undefined;
   const central = centralLoginConfig();
-  const base = (process.env.APP_BASE_URL ?? "http://127.0.0.1:3010").replace(/\/$/, "");
+  const base = appBaseUrl();
   const centralUrl = central ? centralLoginStartUrl(`${base}/auth/central`) : null;
 
   return (

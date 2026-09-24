@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import { isAdmin, isOffice, isReviewer, type SessionUser } from "@/lib/types";
 import { centralLoginConfig } from "@/lib/central-login";
+import { sessionSecret } from "@/lib/env";
 
 const SESSION_COOKIE = "reviewme-session";
 const SESSION_MAX_AGE = 60 * 60 * 10;
@@ -21,17 +22,8 @@ interface SessionPayload {
   issuedAt: number;
 }
 
-function getSessionSecret() {
-  const secret = process.env.SESSION_SECRET;
-  if (secret) return secret;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("SESSION_SECRET must be configured in production.");
-  }
-  return "local-dev-session-secret";
-}
-
 function sign(value: string) {
-  return crypto.createHmac("sha256", getSessionSecret()).update(value).digest("hex");
+  return crypto.createHmac("sha256", sessionSecret()).update(value).digest("hex");
 }
 
 function serialize(payload: SessionPayload) {
