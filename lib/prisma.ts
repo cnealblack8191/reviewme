@@ -14,8 +14,15 @@ function createClient() {
   });
 }
 
-export const prisma = globalForPrisma.prisma ?? createClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+function client() {
+  globalForPrisma.prisma ??= createClient();
+  return globalForPrisma.prisma;
 }
+
+// Created on first query, not at import, so `next build` can collect pages without a database.
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, property) {
+    const value = Reflect.get(client(), property);
+    return typeof value === "function" ? value.bind(client()) : value;
+  }
+});

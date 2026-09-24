@@ -8,7 +8,7 @@ import { recordAudit } from "@/lib/audit";
 /** Merged office PDF: ?reviewer=<userId> for one reviewer's crew, none for the whole company. ?drafts=1 includes unfinished reviews. */
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
-  if (!user || !isOffice(user)) return new Response("Forbidden", { status: 403 });
+  if (!user || !isOffice(user) || user.mustChangePassword) return new Response("Forbidden", { status: 403 });
 
   const sp = request.nextUrl.searchParams;
   const period = sp.get("period")

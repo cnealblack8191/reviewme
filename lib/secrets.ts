@@ -5,9 +5,10 @@
  * means re-entering the secrets on the Settings page.
  */
 import crypto from "node:crypto";
+import { encryptionSecret } from "@/lib/env";
 
 function key() {
-  const source = process.env.APP_ENCRYPTION_KEY ?? process.env.SESSION_SECRET ?? "local-dev-session-secret";
+  const source = encryptionSecret();
   return crypto.createHash("sha256").update(`${source}:settings-secrets`).digest();
 }
 

@@ -7,6 +7,7 @@ import { checkIdentity, linkCookieName, linkCookieValue, markLinkUsed } from "@/
 import { isValidRating, markDeclined, markSigned, submitEmployeeSide } from "@/lib/reviews";
 import { loadWorkerLink } from "@/lib/worker-link";
 import { recordAudit } from "@/lib/audit";
+import { clientAddress } from "@/lib/throttle";
 
 function field(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -102,7 +103,7 @@ export async function signAction(formData: FormData) {
     update: { typedName, imageData, declined: false, declineComment: null, signedAt: new Date() },
     create: {
       reviewId: link.reviewId, typedName, imageData,
-      ipAddress: requestHeaders.get("x-forwarded-for") ?? undefined,
+      ipAddress: clientAddress(requestHeaders),
       userAgent: requestHeaders.get("user-agent") ?? undefined
     }
   });
@@ -125,7 +126,7 @@ export async function declineAction(formData: FormData) {
     update: { typedName: field(formData, "typedName") || "(declined)", imageData: null, declined: true, declineComment: comment, signedAt: new Date() },
     create: {
       reviewId: link.reviewId, typedName: field(formData, "typedName") || "(declined)", declined: true, declineComment: comment,
-      ipAddress: requestHeaders.get("x-forwarded-for") ?? undefined,
+      ipAddress: clientAddress(requestHeaders),
       userAgent: requestHeaders.get("user-agent") ?? undefined
     }
   });

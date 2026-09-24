@@ -2,6 +2,9 @@
   "name": "reviewme",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.9"
+  },
   "scripts": {
     "dev": "next dev --turbopack --hostname 127.0.0.1 --port 3010",
     "build": "next build",
@@ -9,6 +12,8 @@
     "lint": "tsc --noEmit",
     "check": "npm run lint && npm run build",
     "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "node --env-file-if-exists=.env prisma/seed.mjs",
     "reminders:run": "node --env-file-if-exists=.env scripts/send-reminders.mjs"

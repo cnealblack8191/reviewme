@@ -61,9 +61,10 @@ async function seedUsers() {
   const adminPassword = process.env.SEED_ADMIN_PASSWORD;
 
   if (adminEmail && adminPassword) {
+    // Create only: the seed runs on every deploy and must not undo a role change or deactivation.
     await prisma.user.upsert({
       where: { email: adminEmail },
-      update: { roles: ["ADMIN", "OFFICE"], isActive: true },
+      update: {},
       create: {
         email: adminEmail,
         name: process.env.SEED_ADMIN_NAME?.trim() || "ECI Admin",
@@ -77,7 +78,9 @@ async function seedUsers() {
   }
 
   const demoPassword = process.env.SEED_DEMO_PASSWORD;
-  if (demoPassword) {
+  if (demoPassword && process.env.NODE_ENV === "production") {
+    console.log("SEED_DEMO_PASSWORD is ignored in production, no demo accounts created.");
+  } else if (demoPassword) {
     for (const demo of [
       { email: "office.demo@ecinc.us", name: "Demo Office", roles: ["OFFICE"] },
       { email: "foreman.demo@ecinc.us", name: "Demo Foreman", roles: ["FOREMAN"] },

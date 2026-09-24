@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
 import { decryptToken, linkUrl } from "@/lib/links";
 import { deliver } from "@/lib/messaging";
+import { appBaseUrl } from "@/lib/env";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -118,7 +119,7 @@ export async function runReminders(now = new Date(), options: { force?: boolean 
     bySupervisor.set(review.supervisorId, list);
   }
 
-  const base = (process.env.APP_BASE_URL ?? "http://127.0.0.1:3010").replace(/\/$/, "");
+  const base = appBaseUrl();
   for (const [, reviews] of bySupervisor) {
     const supervisor = reviews[0].supervisor;
     if (!supervisor.email || !supervisor.isActive) continue;

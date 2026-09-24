@@ -5,7 +5,7 @@ import { buildReviewPdf, type PdfAudience } from "@/lib/review-pdf";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ reviewId: string }> }) {
   const user = await getCurrentUser();
-  if (!user || !isOffice(user)) return new Response("Forbidden", { status: 403 });
+  if (!user || !isOffice(user) || user.mustChangePassword) return new Response("Forbidden", { status: 403 });
 
   const { reviewId } = await params;
   const audience: PdfAudience = request.nextUrl.searchParams.get("copy") === "employee" ? "employee" : "office";
